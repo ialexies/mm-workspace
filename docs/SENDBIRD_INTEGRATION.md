@@ -310,6 +310,7 @@ The push notification system uses a provider-based architecture:
 - **Android Fix Summary**: `frontend/ANDROID_PUSH_NOTIFICATION_FIX_SUMMARY.md`
 - **Java 21 Setup**: `frontend/android/JAVA_21_REQUIREMENT.md`
 - **Chat Integration**: `docs/frontend/SENDBIRD_CHAT_INTEGRATION.md`
+- **Troubleshooting (BadDeviceToken)**: See `frontend/docs/PUSH_NOTIFICATION_TROUBLESHOOTING.md` — real-world fix was matching Sendbird dashboard APNs environment to the app build (dev vs prod); token was valid hex.
 
 ### Troubleshooting
 

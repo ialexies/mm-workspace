@@ -610,6 +610,14 @@ case "/my-chats": {
 - [ ] Error logging to Sentry with proper context
 - [ ] Graceful degradation when push fails
 
+## iOS vs Android Parity & QA Reference
+
+- For an iOS-focused QA flow that mirrors the working Android implementation, see `frontend/docs/IOS_PUSH_NOTIFICATIONS_QA_CHECKLIST.md`.
+- When validating changes, always:
+  - Compare titles, bodies, deep links, and image behaviour on both platforms for at least one **Sendbird** and one **Klaviyo** notification.
+  - Confirm APNs and FCM credentials are correctly configured in the Sendbird dashboard for the target environment.
+  - Re-run the sign-off checklist in `IOS_PUSH_NOTIFICATIONS_QA_CHECKLIST.md` before each major release.
+
 ## Phased Rollout Recommendation
 
 1. **Phase 1 (MVP)**: Native push notifications only, basic error handling
