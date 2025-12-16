@@ -1,0 +1,38 @@
+# Local workspace ignore patterns
+# This file is local-only
+
+# Dependencies
+**/node_modules/**
+**/bun.lock
+**/yarn.lock
+**/package-lock.json
+
+# Build outputs
+**/.next/**
+**/dist/**
+**/build/**
+**/out/**
+
+# Logs
+**/*.log
+**/logs/**
+
+# Cache
+**/.cache/**
+**/.turbo/**
+**/.next/cache/**
+
+# Test outputs
+**/coverage/**
+**/test-report.xml
+
+# Mobile builds
+frontend/android/app/build/**
+frontend/ios/Pods/**
+frontend/www/**
+
+# Large data files
+backend/seo_json/**
+backend/admin.cloudbeds_reservations.csv
+
+

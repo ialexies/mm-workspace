@@ -1,0 +1,39 @@
+# Cursor Rules for Local Mad Monkey V3 Workspace
+# This file is local-only and not committed to any repo
+
+## Workspace Structure
+- This is a LOCAL workspace combining two independent repos:
+  - `frontend/` - Next.js application (separate repo for frontend team)
+  - `backend/` - Bun + Hono service (separate repo for backend team)
+
+## Context Awareness
+- When working in `frontend/`, understand it's a Next.js app with:
+  - Pages-based routing in `pages/`
+  - Components in `components/`
+  - Redux store in `store/`
+  - Generated API client in `v3/api/`
+  - Path aliases: `@/*` maps to `frontend/*`
+
+- When working in `backend/`, understand it's a Hono service with:
+  - Routes in `src/routes/`
+  - Services in `src/services/`
+  - OpenAPI schemas in `src/openapi/`
+  - Drizzle ORM for PostgreSQL
+
+## Cross-Package Context
+- Frontend uses generated API client from backend OpenAPI schema
+- Backend API typically runs on different port than frontend
+- Respect each package's independent structure and conventions
+- Don't create cross-package dependencies or shared code
+
+## Code Generation
+- Frontend API client is generated: `npm run gen:api` in `frontend/`
+- Backend OpenAPI schema: `backend/src/openapi/`
+- Don't manually edit generated files in `frontend/v3/api/`
+
+## TypeScript
+- Each package has its own `tsconfig.json`
+- Frontend: strict mode, path aliases configured
+- Backend: strict mode, Bun runtime
+
+

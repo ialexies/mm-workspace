@@ -1,0 +1,35 @@
+flowchart TD
+    subgraph Prep["Scope & Alignment"]
+        A1[Define chat scenarios<br/>guest↔support, group hostel]
+        A2[Map flows to Sendbird features<br/>channels, receipts, moderation]
+        A3[Collect config values<br/>SENDBIRD_APP_ID, API token, webhook secret]
+    end
+
+    subgraph Backend["Backend (Bun + Hono)"]
+        B1[Create SendbirdService<br/>Platform API wrapper]
+        B2[Build /chat/token endpoint<br/>sync user + issue token]
+        B3[Add channel lifecycle endpoints<br/>create/list/join]
+        B4[Handle Sendbird webhooks<br/>publish via EventBus]
+        B5[Write backend tests & docs]
+    end
+
+    subgraph Frontend["Frontend (Next.js)"]
+        C1[Initialize Sendbird JS SDK<br/>services/sendbirdClient]
+        C2[Chat context/provider<br/>fetch token post Firebase auth]
+        C3[Implement chat UI<br/>UIKit components or custom]
+        C4[Wire analytics & logging<br/>GTM, Sentry, retries]
+        C5[Add integration/e2e tests]
+    end
+
+    subgraph OpsQA["Operations & QA"]
+        D1[Update deployment docs & env checklist]
+        D2[Register webhook URLs in Sendbird dashboard]
+        D3[Run staging validation<br/>multi-device, token refresh]
+        D4[Launch & monitor metrics]
+    end
+
+    A1 --> A2 --> A3 --> B1
+    B1 --> B2 --> B3 --> B4 --> B5 --> C1
+    C1 --> C2 --> C3 --> C4 --> C5 --> D1
+    D1 --> D2 --> D3 --> D4
+

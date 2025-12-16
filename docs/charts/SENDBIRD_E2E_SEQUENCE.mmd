@@ -1,0 +1,32 @@
+sequenceDiagram
+    participant U as User Device (Web/App)
+    participant FE as Frontend (Next.js)
+    participant BE as Backend (Hono/Bun)
+    participant SB as Sendbird Chat Service
+    participant ST as Telemetry/DB
+
+    U->>FE: Navigate to chat feature
+    FE->>BE: Request Sendbird access token
+    BE->>BE: Verify Firebase JWT, map to Sendbird user
+    BE->>SB: Upsert user & create session token (Platform API)
+    SB-->>BE: Return token & user metadata
+    BE-->>FE: Respond with Sendbird credentials
+    FE->>SB: Initialize JS SDK with app_id
+    FE->>SB: Connect using userId + accessToken
+    SB-->>FE: Connection success + channel list
+    FE-->>U: Render chat UI
+
+    U->>FE: Send message / upload media
+    FE->>SB: Send via SDK
+    SB-->>FE: Ack delivery + update receipts
+    FE-->>U: Optimistic timeline update
+
+    SB->>FE: WebSocket events (messages, typing, presence)
+    FE-->>U: Real-time UI refresh
+
+    SB->>BE: Webhook event (moderation, analytics)
+    BE->>ST: Persist transcript / trigger workflows
+
+    U->>FE: Logout or leave chat
+    FE->>SB: Disconnect & clean up listeners
+

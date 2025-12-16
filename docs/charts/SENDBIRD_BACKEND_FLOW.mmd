@@ -1,0 +1,25 @@
+flowchart LR
+    A[Client requests /chat/token] --> B[Verify Firebase ID token]
+    B -->|Valid| C[Map user to Sendbird ID]
+    B -->|Invalid| Z[Return 401 Unauthorized]
+
+    C --> D[Upsert user via Sendbird Platform API]
+    D --> E[Generate Sendbird access token]
+    E --> F[Respond with token + metadata]
+
+    F --> G[Client initializes SDK]
+
+    subgraph Channel Lifecycle
+        H[Client requests /chat/channel] --> I[Authorize support/admin role]
+        I -->|Authorized| J[Create or fetch channel via Sendbird API]
+        I -->|Forbidden| K[Return 403]
+        J --> L[Return channel info to client]
+    end
+
+    subgraph Webhooks
+        M[Sendbird webhook hits /webhooks/sendbird] --> N[Verify signature]
+        N -->|Valid| O[Publish event to EventBus / logging]
+        N -->|Invalid| P[Return 401]
+        O --> Q[Downstream analytics & moderation workflows]
+    end
+

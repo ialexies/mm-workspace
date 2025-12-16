@@ -1,0 +1,10 @@
+# Exclude frontend and backend repos
+frontend/
+backend/
+
+# Common ignores
+node_modules/
+.env
+.env.local
+*.log
+.DS_Store

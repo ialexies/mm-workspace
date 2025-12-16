@@ -1,0 +1,98 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Launch Chrome Debug",
+      "type": "shell",
+      "command": "& \"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" --remote-debugging-port=9222 --user-data-dir=\"C:\\tmp\\chrome-debug-profile\" http://localhost:3000",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Launch Chrome Debug",
+      "type": "shell",
+      "command": "& \"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" --remote-debugging-port=9222 --user-data-dir='C:\\tmp\\chrome-debug-profile' http://localhost:3000",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Android Device",
+      "type": "shell",
+      "command": "$env:ANDROID_HOME = 'C:\\Users\\alexi\\AppData\\Local\\Android\\Sdk'; if (Test-Path \"$env:ANDROID_HOME\\platform-tools\\adb.exe\") { Write-Host 'Available Devices:' -ForegroundColor Green; & \"$env:ANDROID_HOME\\platform-tools\\adb.exe\" devices; Write-Host '`nAvailable Emulators:' -ForegroundColor Green; & \"$env:ANDROID_HOME\\emulator\\emulator.exe\" -list-avds; $choice = Read-Host 'Choose device type (1 for USB device, 2 for emulator)'; if ($choice -eq '1') { Write-Host 'Using USB device...' -ForegroundColor Yellow } elseif ($choice -eq '2') { $avd = Read-Host 'Enter the name of the AVD you want to launch'; if ($avd) { & \"$env:ANDROID_HOME\\emulator\\emulator.exe\" -avd $avd -no-snapshot-load } else { Write-Error 'No AVD selected.' } } else { Write-Error 'Invalid choice.' } } else { Write-Error 'Android platform tools not found. Please ensure Android SDK is properly installed.' }",
+      "windows": {
+        "options": {
+          "shell": {
+            "executable": "powershell.exe",
+            "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+          }
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Restart Android App",
+      "type": "shell",
+      // "command": "npx cap sync android; npx cap run android",
+      "command": "npx cap run android",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+     {
+      "label": "Hot Reload (Restart Dev Server)",
+      "type": "shell",
+      "command": "npm run dev",
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "pattern": [
+            {
+              "regexp": ".",
+              "file": 1,
+              "location": 2,
+              "message": 3
+            }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "started server on",
+            "endsPattern": "ready - started server on"
+          }
+        }
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+
+  ]
+}

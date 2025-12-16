@@ -1,0 +1,367 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+
+    {
+      "name": "Next.js Server (Node)",
+      "type": "pwa-node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/frontend",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--inspect",
+        "${workspaceFolder}/frontend/node_modules/next/dist/bin/next",
+        "dev"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "sourceMaps": true,
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/frontend/**",
+        "!**/node_modules/**",
+        "!**/.next/cache/**"
+      ],
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "serverReadyAction": {
+        "pattern": "- Local:.+(https?://.+)",
+        "uriFormat": "%s",
+        "action": "debugWithChrome"
+      }
+    },
+    {
+      "name": "Next.js Client (Chrome)",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/frontend",
+      "sourceMaps": true
+    },
+
+
+
+
+        // New: start Next.js using node + inspector so VS Code can attach to server process
+        {
+          "name": "Next.js: Debug (server-side)",
+          "type": "pwa-node",
+          "request": "launch",
+          "runtimeExecutable": "node",
+          "runtimeArgs": [
+            "--inspect=9229",
+            "./frontend/node_modules/next/dist/bin/next",
+            "dev"
+          ],
+          "cwd": "${workspaceFolder}/frontend",
+          "console": "integratedTerminal",
+          "env": { "NODE_ENV": "development" },
+          "sourceMaps": true,
+          "skipFiles": ["<node_internals>/**", "**/node_modules/**", "**/.next/**"]
+        },
+    {
+      "name": "Debug Chrome (attach)",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/frontend",
+      "sourceMaps": true
+    },
+
+    {
+      "name": "App Router: debug full stack",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/frontend",
+      "sourceMaps": true,
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "serverReadyAction": {
+        "pattern": "- Local:.+(https?://.+)",
+        "uriFormat": "%s",
+        "action": "debugWithChrome"
+      },
+      "skipFiles": [
+        "<node_internals>/**",
+        "**/node_modules/**",
+        "**/.next/**"
+      ]
+    },
+      {
+      "name": "App Router: debug full stack auth chrome",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/frontend",
+      "protocol": "inspector",
+      "sourceMaps": true,
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "autoAttachChildProcesses": true,
+      "serverReadyAction": {
+        "pattern": "- Local:.+(https?://.+)",
+        "uriFormat": "%s",
+        "action": "openExternally"
+      },
+      "skipFiles": [
+        "<node_internals>/**",
+        "**/node_modules/**",
+        "**/.next/**"
+      ]
+    },
+    {
+       "name": "Cursor: Debug [Staging].js",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/frontend",
+      "sourceMaps": true,
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "serverReadyAction": {
+        "pattern": "- Local:.+(https?://.+)",
+        "uriFormat": "%s",
+
+        // "action": "openExternally"
+        "action": "debugWithChrome"
+      },
+      "skipFiles": [
+        "<node_internals>/**",
+        "**/node_modules/**",
+        "**/.next/**"
+      ]
+    },
+     {
+       "name": " bk Cursor: Debug [Staging].js",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/frontend",
+      "sourceMaps": true,
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "serverReadyAction": {
+        "pattern": "- Local:.+(https?://.+)",
+        "uriFormat": "%s",
+
+        // "action": "openExternally"
+        "action": "debugWithChrome"
+      },
+      "skipFiles": [
+        "<node_internals>/**",
+        "**/node_modules/**",
+        "**/.next/**"
+      ]
+    },
+    {
+      "name": "App Router: debug full stack",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/frontend",
+      "serverReadyAction": {
+        "pattern": "- Local:.+(https?://.+)",
+        "uriFormat": "%s",
+        "action": "debugWithChrome"
+      }
+    },
+    {
+      "name": "App Router: debug full stack auth chrome",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/frontend",
+      // "protocol": "inspector",
+      "autoAttachChildProcesses": true,
+      "serverReadyAction": {
+        "pattern": "- Local:.+(https?://.+)",
+        "uriFormat": "%s",
+        "action": "openExternally"
+      }
+    },
+    {
+      "name": "Debug Next.js",
+      "type": "node",
+      "request": "attach",
+      "processId": "${command:PickProcess}",
+      "restart": true,
+      "protocol": "inspector",
+      "autoAttachChildProcesses": true,
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Page Router: debug full stack",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/frontend",
+      "console": "integratedTerminal",
+      "serverReadyAction": {
+        "pattern": "started server on .+, url: (https?://.+)",
+        "uriFormat": "%s",
+        "action": "debugWithChrome"
+      }
+    },
+    {
+      "name": "Debug Android",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npx cap sync android; npx cap run android",
+      "cwd": "${workspaceFolder}/frontend",
+      // "console": "integratedTerminal",
+      "preLaunchTask": "Start Android Emulator",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      // "restart": true,
+      "internalConsoleOptions": "openOnSessionStart",
+      "env": {
+        "CAPACITOR_CONFIG": "capacitor.config.android.ts"
+      },
+      // "problemMatcher": {
+      //   "pattern": {
+      //     "regexp": ".",
+      //     "file": 1,
+      //     "location": 2,
+      //     "message": 3
+      //   },
+      //   "background": {
+      //     "activeOnStart": true,
+      //     "beginsPattern": ".",
+      //     "endsPattern": "Deploying app-debug.apk"
+      //   }
+      // }
+    },
+    {
+      "name": "Debug iOS",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npx cap sync ios; npx cap run ios",
+      "cwd": "${workspaceFolder}/frontend",
+      "console": "integratedTerminal",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "restart": true,
+      "internalConsoleOptions": "openOnSessionStart",
+      "env": {
+        "CAPACITOR_CONFIG": "capacitor.config.ios.ts"
+      },
+      "problemMatcher": {
+        "pattern": {
+          "regexp": ".",
+          "file": 1,
+          "location": 2,
+          "message": 3
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Successfully launched"
+        }
+      }
+    },
+    {
+      "name": "Release Android",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npx cap sync android; npx cap open android",
+      "cwd": "${workspaceFolder}/frontend",
+      "console": "integratedTerminal",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "restart": true,
+      "internalConsoleOptions": "openOnSessionStart",
+      "env": {
+        "NODE_ENV": "production",
+        "CAPACITOR_CONFIG": "capacitor.config.android.ts"
+      },
+      "problemMatcher": {
+        "pattern": {
+          "regexp": ".",
+          "file": 1,
+          "location": 2,
+          "message": 3
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Sync finished"
+        }
+      }
+    },
+    {
+      "name": "Release iOS",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npx cap sync ios; npx cap open ios",
+      "cwd": "${workspaceFolder}/frontend",
+      "console": "integratedTerminal",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "restart": true,
+      "internalConsoleOptions": "openOnSessionStart",
+      "env": {
+        "NODE_ENV": "production",
+        "CAPACITOR_CONFIG": "capacitor.config.ios.ts"
+      },
+      "problemMatcher": {
+        "pattern": {
+          "regexp": ".",
+          "file": 1,
+          "location": 2,
+          "message": 3
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Sync finished"
+        }
+      }
+    },
+    {
+      "name": "Attach to Chrome (9222)",
+      "type": "pwa-chrome",
+      "request": "attach",
+      "port": 9222,
+      "webRoot": "${workspaceFolder}/frontend",
+      "preLaunchTask": "Launch Chrome Debug",
+      "sourceMapPathOverrides": {
+        "webpack:///./*": "${workspaceFolder}/*",
+        "webpack:///src/*": "${workspaceFolder}/frontend/src/*",
+        "webpack:///*": "${workspaceFolder}/*"
+      }
+    }
+  ],
+    "compounds": [
+    {
+      "name": "Next.js: Full-stack Debug",
+      "configurations": [
+        "Next.js Server (Node)",
+        "Next.js Client (Chrome)"
+      ]
+    }
+  ]
+}
