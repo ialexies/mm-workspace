@@ -258,6 +258,12 @@ Push notifications are fully implemented with comprehensive image support for bo
 - **App State Handling**: Full support for foreground, background, and closed app states
 - **Provider Integration**: Automatic token registration with Sendbird and Klaviyo
 
+### Debug banner on `/my-chats`
+
+- The chat page renders `ChatNotificationStatusBanner` (native only) to surface push diagnostics.
+- Fields shown: truncated device token, overall provider registration flag, Sendbird registration flag (via `getSendbirdRegistrationStatus()`), and permission status.
+- Useful when a device token already exists but needs confirmation that Sendbird push is registered for the current user.
+
 ### Critical Fixes Applied
 
 1. **Plugin Registration Timing** (Android)
