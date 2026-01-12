@@ -637,9 +637,40 @@ This allows for iterative testing and deployment, reducing risk.
 6. **Graceful degradation** - App continues working even if push notifications fail
 7. **Comprehensive error handling** - Log to Sentry with proper context, never block app functionality
 
+## iOS Settings Fix (December 2024)
+
+### Issue
+The "Go to Settings" button in the notification permission modal was not working on iOS. Clicking the button did nothing, while it worked correctly on Android.
+
+### Root Cause
+In Capacitor 7.0.1, `PushNotifications.openSettings()` is not implemented on iOS. The code attempted to use this method first, and when it failed, the error was being caught and swallowed, preventing the fallback to `capacitor-native-settings` from executing.
+
+### Solution
+Updated `PushNotificationService.openSettings()` to properly handle fallback methods:
+
+1. **Try `PushNotifications.openSettings()`** (if available) - Works on Android
+2. **Fall back to `NativeSettings.open()`** - Uses `capacitor-native-settings` with `IOSSettings.App` for iOS
+3. **Fall back to `App.openSettings()`** - Last resort
+
+The fix ensures that when the primary method fails, execution continues to fallback methods instead of being caught and swallowed.
+
+### Implementation
+- **File**: `frontend/services/pushNotificationService.ts`
+- **Method**: `openSettings()`
+- **Dependency**: `capacitor-native-settings` (^7.0.2)
+
+### Platform Behavior
+- **iOS**: Opens app settings page (user navigates to Notifications section)
+- **Android**: Opens notification settings directly
+- **Web**: No-op (returns early)
+
+### Related Documentation
+- [Push Notification Troubleshooting](frontend/docs/PUSH_NOTIFICATION_TROUBLESHOOTING.md) - See "Go to Settings" Button Does Nothing on iOS section
+
 ## Related Documentation
 
 - [Sendbird Chat Integration Docs](docs/frontend/SENDBIRD_CHAT_INTEGRATION.md)
 - [Sendbird Push Notifications Docs](https://sendbird.com/docs/chat/sdk/v3/javascript/guides/push-notifications)
 - [Capacitor Push Notifications Docs](https://capacitorjs.com/docs/apis/push-notifications)
 - [Sentry Error Logging Roadmap](frontend/docs/SENTRY_ERROR_LOGGING_ROADMAP.md)
+- [Push Notification Troubleshooting](frontend/docs/PUSH_NOTIFICATION_TROUBLESHOOTING.md)

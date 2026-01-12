@@ -339,6 +339,13 @@ Common issues and solutions:
    - Verify permissions are granted
    - Check console logs for registration errors
 
+5. **"Go to Settings" button doesn't work on iOS** (Fixed December 2024):
+   - **Issue**: Button clicked but nothing happens on iOS
+   - **Root Cause**: `PushNotifications.openSettings()` not implemented in Capacitor 7.0.1 for iOS
+   - **Solution**: Fallback to `capacitor-native-settings` plugin with `IOSSettings.App`
+   - **Status**: ✅ Fixed - Uses fallback chain: `PushNotifications.openSettings()` → `NativeSettings.open()` → `App.openSettings()`
+   - **Documentation**: See `frontend/docs/PUSH_NOTIFICATION_TROUBLESHOOTING.md` for details
+
 ---
 
 ## 8. References
