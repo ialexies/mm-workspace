@@ -316,6 +316,7 @@ The push notification system uses a provider-based architecture:
 - **Android Fix Summary**: `frontend/ANDROID_PUSH_NOTIFICATION_FIX_SUMMARY.md`
 - **Java 21 Setup**: `frontend/android/JAVA_21_REQUIREMENT.md`
 - **Chat Integration**: `docs/frontend/SENDBIRD_CHAT_INTEGRATION.md`
+- **Troubleshooting (BadDeviceToken)**: See `frontend/docs/PUSH_NOTIFICATION_TROUBLESHOOTING.md` — real-world fix was matching Sendbird dashboard APNs environment to the app build (dev vs prod); token was valid hex.
 
 ### Troubleshooting
 
@@ -343,6 +344,13 @@ Common issues and solutions:
    - Check Sendbird connection state (must be OPEN)
    - Verify permissions are granted
    - Check console logs for registration errors
+
+5. **"Go to Settings" button doesn't work on iOS** (Fixed December 2024):
+   - **Issue**: Button clicked but nothing happens on iOS
+   - **Root Cause**: `PushNotifications.openSettings()` not implemented in Capacitor 7.0.1 for iOS
+   - **Solution**: Fallback to `capacitor-native-settings` plugin with `IOSSettings.App`
+   - **Status**: ✅ Fixed - Uses fallback chain: `PushNotifications.openSettings()` → `NativeSettings.open()` → `App.openSettings()`
+   - **Documentation**: See `frontend/docs/PUSH_NOTIFICATION_TROUBLESHOOTING.md` for details
 
 ---
 
