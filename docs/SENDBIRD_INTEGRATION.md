@@ -169,6 +169,7 @@ sequenceDiagram
    - Entry points: header "Chat with us" CTA, booking detail pages, support drawers on mobile via Capacitor.
    - Custom chat components: `ChatChannelList`, `ChatWindow` with search, info sidebar, and profile redirects.
    - **Mobile optimizations**: Keyboard handling for native apps (iOS/Android), swipe gestures for navigation, responsive drawer/modal layouts.
+   - **Detailed Documentation**: See `frontend/docs/MY_CHATS_PAGE_DOCUMENTATION.md` for comprehensive UI/UX design, component architecture, keyboard handling, swipe gestures, and desktop/mobile layout details.
 
 4. **Push Notifications** ✅ **IMPLEMENTED**
 
@@ -187,7 +188,7 @@ sequenceDiagram
      - Early listener setup for closed app notifications
      - Automatic token registration with Sendbird and Klaviyo
      - Image download, caching, and secure URI conversion (Android)
-   - **Documentation**: See `docs/frontend/PUSH_NOTIFICATIONS.md` and `docs/frontend/PUSH_NOTIFICATIONS_ARCHITECTURE.md` for detailed implementation guides.
+   - **Documentation**: See `frontend/docs/PUSH_NOTIFICATIONS.md` and `frontend/docs/PUSH_NOTIFICATIONS_ARCHITECTURE.md` for detailed implementation guides.
 
 5. **Analytics & Logging**
 
@@ -208,8 +209,23 @@ sequenceDiagram
 
    - ✅ Project docs updated with Sendbird setup steps, environment variable requirements, and webhook registration instructions.
    - ✅ Troubleshooting sections added covering token expiration, moderation events, webhook retries, and push notification issues.
-   - ✅ Frontend documentation: `docs/frontend/SENDBIRD_CHAT_INTEGRATION.md`
-   - ✅ Push notification documentation: `docs/frontend/PUSH_NOTIFICATIONS.md` and `docs/frontend/PUSH_NOTIFICATIONS_ARCHITECTURE.md`
+   - ✅ Frontend documentation:
+     - **My Chats Page**: `frontend/docs/MY_CHATS_PAGE_DOCUMENTATION.md` - **COMPREHENSIVE DOCUMENTATION** covering:
+       - Complete architecture overview and component structure
+       - SendBird integration details and connection management
+       - Push notification implementation and permission handling
+       - Keyboard handling for native mobile apps (iOS/Android)
+       - Swipe gesture implementation for navigation
+       - Desktop vs mobile layout differences and responsive design
+       - UI/UX features including custom headers, message bubbles, search, and info modals
+       - State management and error handling
+       - Navigation, deep linking, and routing
+       - Performance optimizations
+       - Capacitor integration details
+       - Import structure and dependencies
+       - Testing considerations and troubleshooting guide
+     - **Chat Integration**: `frontend/docs/SENDBIRD_CHAT_INTEGRATION.md` (if exists)
+   - ✅ Push notification documentation: `frontend/docs/PUSH_NOTIFICATIONS.md` and `frontend/docs/PUSH_NOTIFICATIONS_ARCHITECTURE.md`
    - ✅ Android build requirements: `frontend/android/JAVA_21_REQUIREMENT.md`
 
 2. **Webhooks & Security**
@@ -312,11 +328,12 @@ The push notification system uses a provider-based architecture:
 
 ### Related Documentation
 
-- **Frontend Implementation**: `docs/frontend/PUSH_NOTIFICATIONS.md`
-- **Architecture Details**: `docs/frontend/PUSH_NOTIFICATIONS_ARCHITECTURE.md`
+- **My Chats Page**: `frontend/docs/MY_CHATS_PAGE_DOCUMENTATION.md` - Complete documentation of chat UI/UX, components, keyboard handling, swipe gestures, and responsive design
+- **Frontend Implementation**: `frontend/docs/PUSH_NOTIFICATIONS.md`
+- **Architecture Details**: `frontend/docs/PUSH_NOTIFICATIONS_ARCHITECTURE.md`
 - **Android Fix Summary**: `frontend/ANDROID_PUSH_NOTIFICATION_FIX_SUMMARY.md`
 - **Java 21 Setup**: `frontend/android/JAVA_21_REQUIREMENT.md`
-- **Chat Integration**: `docs/frontend/SENDBIRD_CHAT_INTEGRATION.md`
+- **Chat Integration**: `frontend/docs/SENDBIRD_CHAT_INTEGRATION.md` (if exists)
 - **Troubleshooting (BadDeviceToken)**: See `frontend/docs/PUSH_NOTIFICATION_TROUBLESHOOTING.md` — real-world fix was matching Sendbird dashboard APNs environment to the app build (dev vs prod); token was valid hex.
 
 ### Troubleshooting
