@@ -168,6 +168,7 @@ sequenceDiagram
    - Custom MUI components integrated with Sendbird UIKit for brand consistency.
    - Entry points: header "Chat with us" CTA, booking detail pages, support drawers on mobile via Capacitor.
    - Custom chat components: `ChatChannelList`, `ChatWindow` with search, info sidebar, and profile redirects.
+   - **Mobile optimizations**: Keyboard handling for native apps (iOS/Android), swipe gestures for navigation, responsive drawer/modal layouts.
 
 4. **Push Notifications** ✅ **IMPLEMENTED**
 

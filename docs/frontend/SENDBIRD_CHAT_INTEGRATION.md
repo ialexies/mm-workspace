@@ -262,6 +262,8 @@ function TravelersPage() {
 - ✅ Profile popup Message button interception
 - ✅ Channel creation from profile popups
 - ✅ Smart channel display names (1:1 shows other user, groups show "Mad Monkey Chat")
+- ✅ Mobile keyboard handling (automatic input positioning above keyboard)
+- ✅ Mobile swipe gestures (swipe right to close chat)
 
 ---
 
@@ -1005,6 +1007,61 @@ useEffect(() => {
 - Redirecting after channel creation
 - Opening channels from external links
 
+### 12. Mobile Swipe Gestures
+
+**Feature:** Native-feeling swipe-to-back on mobile chat surfaces.
+
+**Behavior:**
+
+- **Chat list:** Swipe right from the left edge to go back to the previous screen (only when no chat is open).
+- **Chat window:** Swipe right from the left edge to close the chat and return to the chat list (only when a chat drawer is open).
+
+**Implementation:**
+
+- Uses `react-swipeable` handlers in:
+  - `pages/my-chats/index.tsx` (chat list container)
+  - `components/molecules/ChatWindow.tsx` (mobile drawer content)
+- Mobile-only guards: handlers activate when `isMobile === true`.
+- Thresholds: requires ~50px horizontal swipe (`delta: 50`) and allows normal vertical scrolling (`preventScrollOnSwipe: false`).
+- Hook placement: `useSwipeable` is defined before any early returns to respect React’s Rules of Hooks.
+
+**Notes:**
+
+- Designed for Capacitor iOS/Android; does not rely on browser native swipe-back.
+- Keep `touchAction: "pan-y pinch-zoom"` on swipeable containers to preserve vertical scroll.
+- If adjusting sensitivity, tune `delta` or add a velocity check after field testing.
+
+### 13. Mobile Keyboard Handling
+
+**Feature:** Automatic keyboard avoidance for message input on native mobile platforms.
+
+**Behavior:**
+
+- **iOS/Android:** When keyboard appears, message input automatically moves above keyboard
+- **Web:** Standard browser keyboard handling (no special handling needed)
+- **Input positioning:** Input stays visible above keyboard with small gap (2px)
+
+**Implementation:**
+
+- Uses Capacitor Keyboard API (`@capacitor/keyboard`) for native platforms only
+- Listens to `keyboardWillShow`, `keyboardDidShow`, and `keyboardWillHide` events
+- Calculates keyboard height and available viewport space
+- Applies CSS transform (`translateY`) to lift input above keyboard
+- Handles both `adjustPan` and `adjustResize` Android windowSoftInputMode configurations
+- Cleans up transform when keyboard hides
+
+**Technical Details:**
+
+- Uses `visualViewport` API when available for accurate keyboard height detection
+- Fallback to `window.innerHeight - keyboardHeight` for older browsers
+- Transform applied with 150ms ease transition for smooth animation
+- Only active on native platforms (`Capacitor.isNativePlatform()`)
+- Automatically cleans up listeners when chat window closes
+
+**Code Location:**
+
+- `components/molecules/ChatWindow.tsx` - Keyboard event listeners and transform logic (lines ~2550-2626)
+
 ---
 
 ## File Structure
@@ -1024,6 +1081,8 @@ frontend/
 │                                   #   - Group avatars
 │                                   #   - Avatar click profile redirect
 │                                   #   - Profile popup interception
+│                                   #   - Mobile keyboard handling
+│                                   #   - Mobile swipe gestures
 ├── types/
 │   └── sendbird.ts                # TypeScript types
 └── pages/

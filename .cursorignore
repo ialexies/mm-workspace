@@ -14,8 +14,8 @@
 **/out/**
 
 # Logs
-**/*.log
-**/logs/**
+!/.cursor/debug.log
+!**/.cursor/debug.log
 
 # Cache
 **/.cache/**
