@@ -417,6 +417,8 @@ await FileUriConverter.showNotificationWithImage({
 
 ### Implementation (`ChatWindow.tsx`)
 
+**Approach**: We use a minimal, non-intrusive approach that doesn't fight SendBird's layout system. Instead of forcing layout changes, we add `padding-bottom` to the `.sendbird-conversation` container when keyboard appears, which pushes content up naturally.
+
 **Capacitor Keyboard Plugin**:
 ```typescript
 import { Keyboard } from "@capacitor/keyboard";
@@ -428,24 +430,49 @@ import type { KeyboardInfo } from "@capacitor/keyboard";
 useEffect(() => {
   if (!open || !Capacitor.isNativePlatform()) return;
 
-  const handleKeyboardShow = (info: KeyboardInfo) => {
-    const inputElement = document.querySelector(
-      '.sendbird-message-input-wrapper'
-    );
-    
-    if (inputElement) {
-      setTimeout(() => {
-        const keyboardHeight = info.keyboardHeight;
-        const viewportHeight = window.visualViewport?.height || window.innerHeight;
-        const targetBottom = viewportHeight - keyboardHeight - 10; // 10px gap
-        
-        // Scroll to position input above keyboard
-        const inputRect = inputElement.getBoundingClientRect();
-        if (inputRect.bottom > targetBottom) {
-          const scrollAmount = inputRect.bottom - targetBottom;
-          window.scrollBy({ top: scrollAmount, behavior: "smooth" });
+  // Helper to find conversation element with retry (waits for SendBird to render)
+  const findConversationElement = (maxRetries = 5, delay = 100): Promise<HTMLElement | null> => {
+    return new Promise((resolve) => {
+      let attempts = 0;
+      const tryFind = () => {
+        const element = document.querySelector(
+          '.sendbird-conversation, [class*="sendbird-conversation"]'
+        ) as HTMLElement | null;
+        if (element || attempts >= maxRetries) {
+          resolve(element);
+        } else {
+          attempts++;
+          setTimeout(tryFind, delay);
         }
-      }, 200); // Wait for keyboard animation
+      };
+      tryFind();
+    });
+  };
+
+  const handleKeyboardShow = async (info: KeyboardInfo) => {
+    const keyboardHeight = info.keyboardHeight;
+    const conversationElement = await findConversationElement();
+
+    if (!conversationElement) {
+      console.warn('[ChatWindow] Could not find sendbird-conversation element');
+      return;
+    }
+
+    // Use padding-bottom instead of max-height to push content up
+    // This is less intrusive and works better with SendBird's layout
+    requestAnimationFrame(() => {
+      conversationElement.style.paddingBottom = `${keyboardHeight}px`;
+      conversationElement.style.transition = 'padding-bottom 0.25s ease-out';
+    });
+  };
+
+  const handleKeyboardHide = async () => {
+    const conversationElement = await findConversationElement();
+    if (conversationElement) {
+      requestAnimationFrame(() => {
+        conversationElement.style.paddingBottom = '';
+        conversationElement.style.transition = '';
+      });
     }
   };
 
@@ -459,18 +486,40 @@ useEffect(() => {
     show.remove();
     didShow.remove();
     hide.remove();
+    
+    // Cleanup: remove any padding we added
+    const conversationElement = document.querySelector(
+      '.sendbird-conversation, [class*="sendbird-conversation"]'
+    ) as HTMLElement | null;
+    if (conversationElement) {
+      conversationElement.style.paddingBottom = '';
+      conversationElement.style.transition = '';
+    }
   };
 }, [open]);
 ```
+
+**Key Principle**: Don't fight SendBird's layout system - only adjust what's necessary for keyboard handling.
 
 **CSS Adjustments**:
 - Input font-size: `16px` minimum (prevents iOS zoom on focus)
 - Input wrapper: `z-index: 1000` to stay above keyboard
 - Letter spacing: `0.5px` for better cursor positioning
+- **Important**: We do NOT force flexbox or layout changes on SendBird containers
 
 **Platform-Specific**:
 - **iOS**: Uses `keyboardWillShow` and `keyboardDidShow` events
-- **Android**: Uses same events, but may need `adjustPan` in AndroidManifest.xml
+- **Android**: Uses same events, `resizeOnFullScreen: true` required for edge-to-edge mode
+
+**Configuration** (`capacitor.config.ts`):
+```typescript
+Keyboard: {
+  resize: KeyboardResize.None, // We handle resizing manually
+  resizeOnFullScreen: true,     // Required for Android edge-to-edge mode
+}
+```
+
+**For detailed documentation**, see `docs/CHATWINDOW_KEYBOARD_HANDLING.md`
 
 ---
 
@@ -643,9 +692,8 @@ const platform = Capacitor.getPlatform(); // "ios" | "android" | "web"
       "presentationOptions": ["badge", "sound", "alert"]
     },
     "Keyboard": {
-      "resize": "body",
-      "style": "dark",
-      "resizeOnFullScreen": true
+      "resize": "none",  // We handle resizing manually via padding-bottom
+      "resizeOnFullScreen": true  // Required for Android edge-to-edge mode
     }
   }
 }
@@ -1042,6 +1090,7 @@ import { getPushNotificationService } from "@/services/pushNotificationService";
 ## Related Documentation
 
 - **Sendbird Integration**: `docs/SENDBIRD_INTEGRATION.md`
+- **Keyboard Handling**: `docs/CHATWINDOW_KEYBOARD_HANDLING.md` (detailed mobile keyboard implementation)
 - **Push Notifications**: `frontend/docs/PUSH_NOTIFICATIONS.md`
 - **Push Architecture**: `frontend/docs/PUSH_NOTIFICATIONS_ARCHITECTURE.md`
 - **Android Setup**: `frontend/android/JAVA_21_REQUIREMENT.md`
