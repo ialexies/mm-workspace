@@ -10,6 +10,7 @@ This document outlines how we will integrate Sendbird Chat into the Mad Monkey p
 - Keep security central by issuing Sendbird access tokens from our backend after Firebase-authenticated users are verified.
 - Surface chat inside the existing Next.js frontend with minimal UX friction, reusing Redux state and the Capacitor mobile shell.
 - **Push notifications are fully implemented** with image support for iOS (APNs) and Android (FCM), including deep linking to chat channels.
+- **Image attachments are fully implemented** with compression (70% quality), multiple files support (up to 10 images), responsive display, and optimized preview experience with properly aligned close buttons.
 
 ---
 
@@ -171,28 +172,53 @@ sequenceDiagram
    - **Mobile optimizations**: Keyboard handling for native apps (iOS/Android), swipe gestures for navigation, responsive drawer/modal layouts.
    - **Detailed Documentation**: See `frontend/docs/MY_CHATS_PAGE_DOCUMENTATION.md` for comprehensive UI/UX design, component architecture, keyboard handling, swipe gestures, and desktop/mobile layout details.
 
-   **CSS Styling & Image Rendering** (Updated January 2025):
+   **Image Attachments & Rendering** (Updated January 2025):
    
-   The `ChatWindow` component includes comprehensive CSS overrides for responsive image rendering in chat messages:
+   The `ChatWindow` component includes comprehensive image attachment support with compression, responsive rendering, and optimized preview experience:
    
+   **Image Compression & Configuration**:
+   - ✅ **Compression Rate**: 70% quality (good balance between quality and file size)
+   - ✅ **Max Resolution**: 1080x1920 (supports both portrait and landscape)
+   - ✅ **Multiple Files**: Enabled (up to 10 images per message)
+   - **Location**: `ChatWindow.tsx` Lines 3804-3820
+   
+   **Responsive Image Rendering**:
    - **Image Renderer Styling** (`.sendbird-image-renderer__image`):
-     - Removed fixed `max-width: 400px` constraint for full responsiveness
-     - Removed fixed `min-width: calc(360px)` constraint
-     - Set `height: 100%` for proper aspect ratio maintenance
-     - Images now scale responsively within their container
+     - Fully responsive width (`width: 100%`, `max-width: 100%`)
+     - Aspect ratio preservation (`height: auto`, `object-fit: contain`)
+     - Images scale responsively within their container
+     - No fixed width constraints
    
    - **Thumbnail Container Styling** (`.sendbird-thumbnail-message-item-body__thumbnail`):
-     - Removed fixed `max-width: 400px` constraint
-     - Removed fixed `min-width: calc(360px)` constraint  
-     - Set `height: 100%` for proper aspect ratio maintenance
+     - Fully responsive width and height
+     - Aspect ratio maintained (`height: auto`)
      - Thumbnails adapt to container width while maintaining aspect ratio
    
-   - **Message Item Body Padding** (`.sendbird-message-content__middle__message-item-body.sendbird-thumbnail-message-item-body`):
-     - Removed all padding (`padding-left`, `padding-right`, `padding-top`, `padding-bottom`) for image messages
-     - Images now extend edge-to-edge within the message container
-     - Provides cleaner, more modern appearance for image attachments
+   - **Image Cover Styling** (`.sendbird-thumbnail-message-item-body__image-cover`):
+     - Removed fixed `290px` width constraint
+     - Fully responsive (`width: 100%`, `max-width: 100%`)
+     - Prevents overflow on mobile devices
    
-   All CSS overrides use `!important` flags to ensure they override Sendbird's default inline styles and stylesheets. These changes ensure images in chat messages are fully responsive and adapt to different screen sizes and container widths.
+   - **Message Item Body Padding**:
+     - Removed all padding for image messages
+     - Images extend edge-to-edge within the message container
+     - Provides cleaner, more modern appearance
+   
+   **Image Preview Modal**:
+   - ✅ **Close Button**: Visible and properly aligned (16px from right edge)
+   - ✅ **Mobile Optimized**: Full-screen preview, touch-friendly close button (44px)
+   - ✅ **Pinch-to-Zoom**: Enabled for mobile devices
+   - ✅ **No Duplicates**: Single close button (removed duplicate styling)
+   - **Location**: `ChatWindow.tsx` Lines 688-707, 556-571
+   
+   **Multiple Files Messages**:
+   - Responsive grid layout for grouped thumbnails
+   - Proper spacing between images (8px gap)
+   - All thumbnails are fully responsive
+   
+   All CSS overrides use `!important` flags to ensure they override Sendbird's default styles. These changes ensure images in chat messages are fully responsive, properly compressed, and provide an excellent preview experience on all devices.
+   
+   **Documentation**: See `docs/frontend/SENDBIRD_IMAGE_ATTACHMENT_ANALYSIS.md` and `docs/frontend/SENDBIRD_IMAGE_PREVIEW_CLOSE_FLOW.md` for complete implementation details.
 
 4. **Push Notifications** ✅ **IMPLEMENTED**
 
@@ -248,6 +274,10 @@ sequenceDiagram
        - Import structure and dependencies
        - Testing considerations and troubleshooting guide
      - **Chat Integration**: `frontend/docs/SENDBIRD_CHAT_INTEGRATION.md` (if exists)
+     - **Image Attachments**: `docs/frontend/SENDBIRD_IMAGE_ATTACHMENT_ANALYSIS.md` - Complete analysis of image attachment implementation
+     - **Image Preview Flow**: `docs/frontend/SENDBIRD_IMAGE_PREVIEW_CLOSE_FLOW.md` - Image preview close button flow and fixes
+     - **Image Click Flow**: `docs/frontend/SENDBIRD_IMAGE_CLICK_FLOW.md` - Image click behavior analysis
+     - **Image Improvements**: `docs/frontend/SENDBIRD_IMAGE_CLICK_IMPROVEMENTS.md` - Improvement suggestions and implementation guide
    - ✅ Push notification documentation: `frontend/docs/PUSH_NOTIFICATIONS.md` and `frontend/docs/PUSH_NOTIFICATIONS_ARCHITECTURE.md`
    - ✅ Android build requirements: `frontend/android/JAVA_21_REQUIREMENT.md`
 
