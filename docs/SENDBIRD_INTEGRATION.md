@@ -10,7 +10,7 @@ This document outlines how we will integrate Sendbird Chat into the Mad Monkey p
 - Keep security central by issuing Sendbird access tokens from our backend after Firebase-authenticated users are verified.
 - Surface chat inside the existing Next.js frontend with minimal UX friction, reusing Redux state and the Capacitor mobile shell.
 - **Push notifications are fully implemented** with image support for iOS (APNs) and Android (FCM), including deep linking to chat channels.
-- **Image attachments are fully implemented** with compression (70% quality), multiple files support (up to 10 images), responsive display, and optimized preview experience with properly aligned close buttons.
+- **Image attachments are fully implemented** with compression (70% quality), multiple files support (up to 10 images), responsive display, optimized preview experience with properly aligned close buttons, and filename hiding in preview header to prevent layout issues.
 
 ---
 
@@ -209,7 +209,9 @@ sequenceDiagram
    - ✅ **Mobile Optimized**: Full-screen preview, touch-friendly close button (44px)
    - ✅ **Pinch-to-Zoom**: Enabled for mobile devices
    - ✅ **No Duplicates**: Single close button (removed duplicate styling)
-   - **Location**: `ChatWindow.tsx` Lines 688-707, 556-571
+   - ✅ **Filename Hidden**: Filename hidden in header to prevent layout issues with long names
+   - ✅ **Exact Class Name**: `sendbird-fileviewer__header__left__filename` (identified via inspect element)
+   - **Location**: `ChatWindow.tsx` Lines 688-707, 556-571 (close button), Lines 624-710, 830-960, 1721-1850 (filename hiding)
    
    **Multiple Files Messages**:
    - Responsive grid layout for grouped thumbnails

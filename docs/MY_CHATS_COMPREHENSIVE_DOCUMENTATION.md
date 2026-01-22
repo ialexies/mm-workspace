@@ -198,6 +198,7 @@ const allChannels = [
 - ✅ **Close Button**: Visible and properly aligned (16px from right edge)
 - ✅ **Mobile Optimized**: Touch-friendly close button (44px), pinch-to-zoom support
 - ✅ **Aspect Ratio**: Preserved (no distortion)
+- ✅ **Filename Hidden**: Filename hidden in preview header to prevent layout issues (exact class: `sendbird-fileviewer__header__left__filename`)
 - **Documentation**: See `docs/frontend/SENDBIRD_IMAGE_ATTACHMENT_ANALYSIS.md` and `docs/frontend/SENDBIRD_IMAGE_PREVIEW_CLOSE_FLOW.md`
 
 **Props**:
@@ -1066,6 +1067,7 @@ The `/my-chats` page is a comprehensive chat implementation featuring:
 - Multiple files support (up to 10 images)
 - Full-screen preview with proper close button
 - Mobile-optimized with pinch-to-zoom
+- Filename hidden in preview header (prevents layout issues)
 - See `docs/frontend/SENDBIRD_IMAGE_ATTACHMENT_ANALYSIS.md` for details
 ✅ **Keyboard Handling**: Native keyboard management for mobile apps
 ✅ **Swipe Gestures**: Intuitive navigation gestures

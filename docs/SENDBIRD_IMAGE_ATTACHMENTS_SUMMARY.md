@@ -13,6 +13,7 @@ This document provides a high-level summary of the image attachment implementati
 - ✅ Responsive image display (fits screen width)
 - ✅ Full-screen preview with properly aligned close button
 - ✅ Mobile-optimized preview (touch-friendly, pinch-to-zoom)
+- ✅ Filename hidden in preview header (prevents layout issues)
 
 ## Implementation Status
 
@@ -80,6 +81,24 @@ isMultipleFilesMessageEnabled={true}
 - Pinch-to-zoom support
 - Proper z-index management
 
+#### 6. Filename Hiding in Image Preview Header
+**Status**: ✅ **IMPLEMENTED**  
+**Location**: Lines 624-710 (mobile CSS), 830-960 (desktop CSS), 1721-1850 (JavaScript)
+
+**Exact Class Name**: `sendbird-fileviewer__header__left__filename`
+
+**Implementation**:
+- CSS rules targeting exact Sendbird class name
+- JavaScript MutationObserver for dynamic hiding
+- Periodic check (100ms) to catch re-renders
+- Multiple hiding techniques for reliability
+
+**Benefits**:
+- Prevents header overflow with long filenames
+- Clean header layout on mobile devices
+- Avatar and action buttons remain visible
+- Works reliably even when Sendbird re-renders
+
 ## Code Locations
 
 ### SendBirdProvider Configuration
@@ -99,6 +118,13 @@ isMultipleFilesMessageEnabled={true}
 - **Lines**: 688-698 (Image preview close button visibility)
 - **Lines**: 700-707 (Close button alignment)
 - **Lines**: 556-571 (Mobile close button styling)
+
+### Filename Hiding
+- **File**: `frontend/components/molecules/ChatWindow.tsx`
+- **Lines**: 624-710 (Mobile CSS - filename hiding)
+- **Lines**: 830-960 (Desktop CSS - filename hiding)
+- **Lines**: 1721-1850 (JavaScript - dynamic filename hiding)
+- **Target Class**: `.sendbird-fileviewer__header__left__filename`
 
 ## Documentation
 
@@ -133,6 +159,8 @@ isMultipleFilesMessageEnabled={true}
 - [x] Pinch-to-zoom works on mobile
 - [x] ESC key closes preview
 - [x] Backdrop click closes preview
+- [x] Filename hidden in preview header
+- [x] Header layout preserved with long filenames
 
 ## Performance Impact
 
@@ -167,5 +195,6 @@ All critical image attachment features have been implemented and tested:
 ✅ **Responsive Display** - Images fit screen width  
 ✅ **Close Button** - Visible, aligned, and functional  
 ✅ **Mobile Optimized** - Touch-friendly, pinch-to-zoom  
+✅ **Filename Hidden** - Prevents header layout issues with long names  
 
 The implementation follows Sendbird UI Kit v3 best practices and provides an excellent user experience across all devices.
