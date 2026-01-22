@@ -212,6 +212,13 @@ sequenceDiagram
    - ✅ **Filename Hidden**: Filename hidden in header to prevent layout issues with long names
    - ✅ **Exact Class Name**: `sendbird-fileviewer__header__left__filename` (identified via inspect element)
    - **Location**: `ChatWindow.tsx` Lines 688-707, 556-571 (close button), Lines 624-710, 830-960, 1721-1850 (filename hiding)
+
+   **Desktop File Viewer (≥1200px)**:
+   - ✅ **Top Margin**: `margin-top: 71px` on `.sendbird-fileviewer` to clear the app navbar
+   - ✅ **Header Padding**: Left/right padding on `.sendbird-fileviewer__header` matches the navigation bar (`MuiContainer-root MuiContainer-maxWidthLg`):
+     - `padding-left` / `padding-right`: `calc((100vw - 1200px) / 2 + 24px)`
+     - Same effective inset as MUI Container maxWidth lg (1200px) + 24px gutters
+   - **Location**: `ChatWindow.tsx` Lines ~1516-1530 (media query `min-width: 1200px`)
    
    **Multiple Files Messages**:
    - Responsive grid layout for grouped thumbnails

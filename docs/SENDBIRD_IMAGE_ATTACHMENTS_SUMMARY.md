@@ -14,6 +14,7 @@ This document provides a high-level summary of the image attachment implementati
 - ✅ Full-screen preview with properly aligned close button
 - ✅ Mobile-optimized preview (touch-friendly, pinch-to-zoom)
 - ✅ Filename hidden in preview header (prevents layout issues)
+- ✅ Desktop file viewer header padding aligned with nav bar (MuiContainer maxWidth lg)
 
 ## Implementation Status
 
@@ -99,6 +100,20 @@ isMultipleFilesMessageEnabled={true}
 - Avatar and action buttons remain visible
 - Works reliably even when Sendbird re-renders
 
+#### 7. Desktop File Viewer Layout (≥1200px)
+**Status**: ✅ **IMPLEMENTED**  
+**Location**: Lines ~1516-1530
+
+**Implementation**:
+- **`.sendbird-fileviewer`**: `margin-top: 71px` to clear the app navbar
+- **`.sendbird-fileviewer__header`**: Left/right padding aligned with the navigation bar (`MuiContainer maxWidth="lg"`):
+  - `padding-left` / `padding-right`: `calc((100vw - 1200px) / 2 + 24px)`
+  - Matches MUI Container maxWidth lg (1200px) + 24px gutters
+
+**Benefits**:
+- File viewer header aligns with nav bar content at all desktop viewport widths
+- Consistent horizontal inset (e.g. 24px at 1200px, 124px at 1400px)
+
 ## Code Locations
 
 ### SendBirdProvider Configuration
@@ -125,6 +140,12 @@ isMultipleFilesMessageEnabled={true}
 - **Lines**: 830-960 (Desktop CSS - filename hiding)
 - **Lines**: 1721-1850 (JavaScript - dynamic filename hiding)
 - **Target Class**: `.sendbird-fileviewer__header__left__filename`
+
+### Desktop File Viewer Layout (≥1200px)
+- **File**: `frontend/components/molecules/ChatWindow.tsx`
+- **Lines**: ~1516-1530 (media query `min-width: 1200px`)
+- **Target Classes**: `.sendbird-fileviewer` (margin-top), `.sendbird-fileviewer__header` (padding)
+- **Purpose**: Align file viewer header with nav bar (`MuiContainer maxWidth="lg"`)
 
 ## Documentation
 

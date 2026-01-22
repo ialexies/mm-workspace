@@ -199,6 +199,7 @@ const allChannels = [
 - ✅ **Mobile Optimized**: Touch-friendly close button (44px), pinch-to-zoom support
 - ✅ **Aspect Ratio**: Preserved (no distortion)
 - ✅ **Filename Hidden**: Filename hidden in preview header to prevent layout issues (exact class: `sendbird-fileviewer__header__left__filename`)
+- ✅ **Desktop File Viewer**: Header padding aligned with nav bar (`MuiContainer maxWidth="lg"`); `margin-top: 71px` clears navbar. See `docs/SENDBIRD_IMAGE_ATTACHMENTS_SUMMARY.md`.
 - **Documentation**: See `docs/frontend/SENDBIRD_IMAGE_ATTACHMENT_ANALYSIS.md` and `docs/frontend/SENDBIRD_IMAGE_PREVIEW_CLOSE_FLOW.md`
 
 **Props**:
