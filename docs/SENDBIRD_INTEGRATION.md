@@ -171,6 +171,29 @@ sequenceDiagram
    - **Mobile optimizations**: Keyboard handling for native apps (iOS/Android), swipe gestures for navigation, responsive drawer/modal layouts.
    - **Detailed Documentation**: See `frontend/docs/MY_CHATS_PAGE_DOCUMENTATION.md` for comprehensive UI/UX design, component architecture, keyboard handling, swipe gestures, and desktop/mobile layout details.
 
+   **CSS Styling & Image Rendering** (Updated January 2025):
+   
+   The `ChatWindow` component includes comprehensive CSS overrides for responsive image rendering in chat messages:
+   
+   - **Image Renderer Styling** (`.sendbird-image-renderer__image`):
+     - Removed fixed `max-width: 400px` constraint for full responsiveness
+     - Removed fixed `min-width: calc(360px)` constraint
+     - Set `height: 100%` for proper aspect ratio maintenance
+     - Images now scale responsively within their container
+   
+   - **Thumbnail Container Styling** (`.sendbird-thumbnail-message-item-body__thumbnail`):
+     - Removed fixed `max-width: 400px` constraint
+     - Removed fixed `min-width: calc(360px)` constraint  
+     - Set `height: 100%` for proper aspect ratio maintenance
+     - Thumbnails adapt to container width while maintaining aspect ratio
+   
+   - **Message Item Body Padding** (`.sendbird-message-content__middle__message-item-body.sendbird-thumbnail-message-item-body`):
+     - Removed all padding (`padding-left`, `padding-right`, `padding-top`, `padding-bottom`) for image messages
+     - Images now extend edge-to-edge within the message container
+     - Provides cleaner, more modern appearance for image attachments
+   
+   All CSS overrides use `!important` flags to ensure they override Sendbird's default inline styles and stylesheets. These changes ensure images in chat messages are fully responsive and adapt to different screen sizes and container widths.
+
 4. **Push Notifications** ✅ **IMPLEMENTED**
 
    - **Platform Support**: iOS (APNs) and Android (FCM) native apps
