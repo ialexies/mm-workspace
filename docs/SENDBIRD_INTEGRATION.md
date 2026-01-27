@@ -158,10 +158,10 @@ sequenceDiagram
 2. **Context & State**
 
    - Create or extend `contexts/chatContext.tsx` to manage Sendbird state:
-     - Fetch Sendbird token from the backend immediately after Firebase auth completes (works with existing `AuthBootstrapper`).
+     - Fetch Sendbird token from the backend when user accesses chat features (lazy initialization).
      - Store active channels, unread counters, typing indicators.
      - Subscribe/unsubscribe to SDK event handlers.
-     - Auto-initialize push notifications on native platforms.
+     - Push notifications initialize independently, but Sendbird token registration happens after chat connection.
 
 3. **UI Components**
 
@@ -434,7 +434,134 @@ Common issues and solutions:
 
 ---
 
-## 8. References
+## 8. Monthly Active Users (MAU) Management
+
+### Overview
+
+Sendbird charges based on Monthly Active Users (MAU), which are users who **connect** to Sendbird (via `sb.connect()`) within a billing period. This is different from user creation or message sending - only actual connections count toward MAU.
+
+### Lazy Initialization Strategy
+
+To reduce MAU costs, we implement **lazy initialization**: chat is only initialized when users actually access chat features, not when they log in.
+
+**Before**: All logged-in users connect → High MAU count (~5,161 users)
+**After**: Only users who access chat connect → Reduced MAU count (depends on actual chat usage)
+
+### When Users Become Active
+
+Users become active (count toward MAU) when they:
+1. Visit `/my-chats` page - Chat initializes automatically on page mount
+2. Click message button - Chat initializes when user clicks message button on travelers page
+
+Users do **NOT** become active when they:
+- Log in to the app
+- Navigate to other pages
+- View their profile
+- Browse destinations
+
+### Android Logging for MAU Tracking
+
+All MAU-related events are logged with the `[SENDBIRD_MAU]` tag for easy filtering in Android logcat:
+
+**Connection Events**:
+- `✅ USER ACTIVE - Connected to Sendbird`: User becomes active (counts toward MAU)
+- `❌ USER DISCONNECTED`: User disconnects from Sendbird
+
+**Initialization Events**:
+- `📍 Chat initialization requested`: Initialization triggered
+- `🚀 Initializing Sendbird client`: Client initialization started
+- `🔄 Connecting to Sendbird...`: Connection attempt started
+- `✅ Chat initialized - User is now active in Sendbird`: Initialization complete
+
+**Skip Events**:
+- `⏭️ Skipping initialization`: Initialization skipped (reason: already_connected | not_logged_in)
+
+### Logcat Commands for Testing
+
+```bash
+# Filter for all MAU-related logs
+adb logcat | grep "SENDBIRD_MAU"
+
+# Filter for only connection events (when users become active)
+adb logcat | grep "USER ACTIVE"
+
+# Filter for initialization triggers
+adb logcat | grep "Chat initialization requested"
+
+# Filter for disconnections
+adb logcat | grep "USER DISCONNECTED"
+
+# Combined filter for active users only
+adb logcat | grep -E "SENDBIRD_MAU.*USER ACTIVE|SENDBIRD_MAU.*Connected to Sendbird"
+```
+
+### Expected Log Flows
+
+**Scenario 1: User logs in but doesn't use chat**
+```
+[No SENDBIRD_MAU logs should appear]
+```
+
+**Scenario 2: User visits /my-chats page**
+```
+[SENDBIRD_MAU] 📍 Chat initialization requested { userId: 123, timestamp: "2026-01-27T10:30:00.000Z", trigger: "USER_ACTION" }
+[SENDBIRD_MAU] 📍 Chat initialization triggered from /my-chats page { timestamp: "2026-01-27T10:30:00.000Z", trigger: "PAGE_MOUNT" }
+[SENDBIRD_MAU] 🚀 Initializing Sendbird client { userId: "customer_123", appId: "...", timestamp: "2026-01-27T10:30:00.100Z" }
+[SENDBIRD_MAU] 🔄 Connecting to Sendbird... { userId: "customer_123", timestamp: "2026-01-27T10:30:00.200Z" }
+[SENDBIRD_MAU] ✅ USER ACTIVE - Connected to Sendbird { userId: "customer_123", timestamp: "2026-01-27T10:30:00.500Z", event: "CONNECTION", countsTowardMAU: true }
+[SENDBIRD_MAU] ✅ Chat initialized - User is now active in Sendbird { userId: "customer_123", customerId: 123, timestamp: "2026-01-27T10:30:00.600Z", countsTowardMAU: true }
+```
+
+**Scenario 3: User clicks message button**
+```
+[SENDBIRD_MAU] 📍 Chat initialization triggered from message button { timestamp: "2026-01-27T10:35:00.000Z", trigger: "MESSAGE_BUTTON_CLICK", guestId: 456 }
+[SENDBIRD_MAU] 📍 Chat initialization requested { userId: 123, timestamp: "2026-01-27T10:35:00.000Z", trigger: "USER_ACTION" }
+[SENDBIRD_MAU] 🚀 Initializing Sendbird client { userId: "customer_123", appId: "...", timestamp: "2026-01-27T10:35:00.100Z" }
+[SENDBIRD_MAU] 🔄 Connecting to Sendbird... { userId: "customer_123", timestamp: "2026-01-27T10:35:00.200Z" }
+[SENDBIRD_MAU] ✅ USER ACTIVE - Connected to Sendbird { userId: "customer_123", timestamp: "2026-01-27T10:35:00.500Z", event: "CONNECTION", countsTowardMAU: true }
+```
+
+**Scenario 4: User disconnects**
+```
+[SENDBIRD_MAU] ❌ USER DISCONNECTED - Disconnected from Sendbird { userId: "customer_123", timestamp: "2026-01-27T10:40:00.000Z", event: "DISCONNECTION" }
+```
+
+### Testing Guide
+
+1. **Verify lazy initialization works**:
+   - Log in to the app
+   - Check logcat: Should see NO `SENDBIRD_MAU` logs
+   - Navigate to `/my-chats`: Should see initialization logs
+   - Verify `✅ USER ACTIVE` log appears
+
+2. **Verify message button triggers initialization**:
+   - Navigate to travelers page
+   - Click message button
+   - Check logcat: Should see initialization logs
+   - Verify `✅ USER ACTIVE` log appears
+
+3. **Verify no connection on login**:
+   - Log in and navigate around app (don't access chat)
+   - Check logcat: Should see NO `SENDBIRD_MAU` logs
+   - Verify no connection occurs
+
+### Impact on Other Features
+
+**Push Notifications**: Continue to work correctly. Push notification service initializes independently and registers tokens once chat is connected.
+
+**Deep Links**: Continue to work correctly. Deep links navigate to `/my-chats`, which triggers lazy initialization.
+
+**Chat Components**: All existing components already check `isInitialized` before use, so they handle uninitialized state correctly.
+
+### Expected Impact
+
+- **Before**: All logged-in users connect → ~5,161 MAU
+- **After**: Only users who access chat connect → Significant reduction (depends on actual chat usage)
+- **Example**: If only 20% of users use chat → ~1,032 MAU (80% reduction)
+
+---
+
+## 9. References
 
 - Sendbird Chat product and documentation: [https://sendbird.com/docs/chat](https://sendbird.com/docs/chat)
 - Sendbird Push Notifications: [https://sendbird.com/docs/chat/sdk/v3/javascript/guides/push-notifications](https://sendbird.com/docs/chat/sdk/v3/javascript/guides/push-notifications)

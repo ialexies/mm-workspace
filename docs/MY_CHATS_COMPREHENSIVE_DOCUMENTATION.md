@@ -30,7 +30,7 @@ This document provides a complete overview of the `/my-chats` page implementatio
 ```
 User navigates to /my-chats
     ↓
-Page loads → ChatContext initializes Sendbird
+Page loads → User accesses chat feature → ChatContext initializes Sendbird (lazy initialization)
     ↓
 Fetch Sendbird token from backend (/chat/token)
     ↓
@@ -260,7 +260,7 @@ interface ChatWindowProps {
 - Handles token fetching and refresh
 - Manages connection state
 - Initializes push notifications (native apps)
-- Auto-initializes on login
+- Lazy initialization: Only initializes when user accesses chat features (visits /my-chats or clicks message button)
 - Cleans up on logout
 
 **State**:
@@ -1041,6 +1041,28 @@ import { getPushNotificationService } from "@/services/pushNotificationService";
 - `[ChatChannelList]`: Channel loading logs
 - `[PushNotificationService]`: Push notification logs
 - `[SendbirdClient]`: SDK interaction logs
+- `[SENDBIRD_MAU]`: MAU tracking logs (see below)
+
+**Android Logcat Filtering for MAU Tracking**:
+- Filter: `SENDBIRD_MAU` to see all MAU-related events
+- Filter: `USER ACTIVE` to see when users become active (count toward MAU)
+- Filter: `USER DISCONNECTED` to see when users disconnect
+- Filter: `Skipping initialization` to verify lazy initialization is working
+
+**Logcat Commands**:
+```bash
+# Filter for all MAU-related logs
+adb logcat | grep "SENDBIRD_MAU"
+
+# Filter for only connection events (when users become active)
+adb logcat | grep "USER ACTIVE"
+
+# Filter for initialization triggers
+adb logcat | grep "Chat initialization requested"
+
+# Filter for disconnections
+adb logcat | grep "USER DISCONNECTED"
+```
 
 **Debug Banner** (Native apps):
 - Shows on `/my-chats` page
@@ -1051,6 +1073,114 @@ import { getPushNotificationService } from "@/services/pushNotificationService";
 - `mm_push_token`: Cached push token
 - `mm_debug_push_token`: Debug push token
 - `mm_pending_notification`: Pending notification action
+
+---
+
+## Lazy Initialization & MAU Management
+
+### Overview
+
+Sendbird chat uses **lazy initialization** to reduce Monthly Active Users (MAU) costs. Chat is only initialized when users actually access chat features, not when they log in.
+
+### Why Lazy Initialization?
+
+Sendbird counts a user as MAU when they **connect** to Sendbird (via `sb.connect()`), not when they create an account or send messages. By deferring initialization until users access chat features, we significantly reduce MAU counts.
+
+**Before**: All logged-in users connect → High MAU count
+**After**: Only users who access chat connect → Reduced MAU count
+
+### When Does Initialization Occur?
+
+Chat initialization is triggered in two scenarios:
+
+1. **User visits `/my-chats` page**: Chat initializes automatically when the page mounts
+2. **User clicks message button**: Chat initializes when user clicks the message button on travelers page
+
+### Initialization Flow
+
+```
+User Action (visits /my-chats OR clicks message button)
+    ↓
+Check if already initialized
+    ↓
+If not initialized → Fetch token from backend
+    ↓
+Initialize Sendbird SDK
+    ↓
+Connect to Sendbird (counts toward MAU)
+    ↓
+Register push notifications (native apps)
+```
+
+### MAU Tracking Logs
+
+All MAU-related events are logged with the `[SENDBIRD_MAU]` tag for easy filtering:
+
+**Connection Events**:
+- `✅ USER ACTIVE - Connected to Sendbird`: User becomes active (counts toward MAU)
+- `❌ USER DISCONNECTED`: User disconnects from Sendbird
+
+**Initialization Events**:
+- `📍 Chat initialization requested`: Initialization triggered
+- `🚀 Initializing Sendbird client`: Client initialization started
+- `🔄 Connecting to Sendbird...`: Connection attempt started
+- `✅ Chat initialized - User is now active in Sendbird`: Initialization complete
+
+**Skip Events**:
+- `⏭️ Skipping initialization`: Initialization skipped (reason: already_connected | not_logged_in)
+
+### Expected Log Flow
+
+**Scenario 1: User logs in but doesn't use chat**
+```
+[No SENDBIRD_MAU logs should appear]
+```
+
+**Scenario 2: User visits /my-chats page**
+```
+[SENDBIRD_MAU] 📍 Chat initialization requested { userId: 123, timestamp: "...", trigger: "USER_ACTION" }
+[SENDBIRD_MAU] 📍 Chat initialization triggered from /my-chats page { timestamp: "...", trigger: "PAGE_MOUNT" }
+[SENDBIRD_MAU] 🚀 Initializing Sendbird client { userId: "customer_123", appId: "...", timestamp: "..." }
+[SENDBIRD_MAU] 🔄 Connecting to Sendbird... { userId: "customer_123", timestamp: "..." }
+[SENDBIRD_MAU] ✅ USER ACTIVE - Connected to Sendbird { userId: "customer_123", timestamp: "...", event: "CONNECTION", countsTowardMAU: true }
+[SENDBIRD_MAU] ✅ Chat initialized - User is now active in Sendbird { userId: "customer_123", customerId: 123, timestamp: "...", countsTowardMAU: true }
+```
+
+**Scenario 3: User clicks message button**
+```
+[SENDBIRD_MAU] 📍 Chat initialization triggered from message button { timestamp: "...", trigger: "MESSAGE_BUTTON_CLICK", guestId: 456 }
+[SENDBIRD_MAU] 📍 Chat initialization requested { userId: 123, timestamp: "...", trigger: "USER_ACTION" }
+[SENDBIRD_MAU] 🚀 Initializing Sendbird client { userId: "customer_123", appId: "...", timestamp: "..." }
+[SENDBIRD_MAU] 🔄 Connecting to Sendbird... { userId: "customer_123", timestamp: "..." }
+[SENDBIRD_MAU] ✅ USER ACTIVE - Connected to Sendbird { userId: "customer_123", timestamp: "...", event: "CONNECTION", countsTowardMAU: true }
+```
+
+### Testing Lazy Initialization
+
+1. **Verify users don't connect on login**:
+   - Log in to the app
+   - Check logcat: Should see NO `SENDBIRD_MAU` logs
+   - Navigate around the app (don't access chat)
+   - Verify no connection occurs
+
+2. **Verify connection on page visit**:
+   - Navigate to `/my-chats`
+   - Check logcat: Should see initialization logs
+   - Verify `✅ USER ACTIVE` log appears
+
+3. **Verify connection on message button**:
+   - Navigate to travelers page
+   - Click message button
+   - Check logcat: Should see initialization logs
+   - Verify `✅ USER ACTIVE` log appears
+
+### Impact on Other Features
+
+**Push Notifications**: Continue to work correctly. Push notification service initializes independently and registers tokens once chat is connected.
+
+**Deep Links**: Continue to work correctly. Deep links navigate to `/my-chats`, which triggers lazy initialization.
+
+**Chat Components**: All existing components already check `isInitialized` before use, so they handle uninitialized state correctly.
 
 ---
 
