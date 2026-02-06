@@ -46,6 +46,7 @@
   - Deep linking support via hooks (`hooks/useDeepLinkListener`) integrates with Capacitor and web query parsing, enabling `madmonkey://` transport into booking thanks pages.
   - Gesture navigation, platform-specific assets, and offline considerations live alongside platform directories (`ios/`, `android/`).
   - Android status bar configuration (`docs/ANDROID_STATUS_BAR_CONFIGURATION.md`) documents Capacitor StatusBar plugin usage, Android API 35+ edge-to-edge compatibility, and native Java configuration for proper icon visibility.
+  - Android splash screen configuration (`docs/ANDROID_SPLASH_SCREEN_CONFIGURATION.md`) explains the splash screen setup to prevent white screen issues when loading remote content, covering timing configurations, JavaScript enhancements, and the differences between development and production deployments.
 
 ### Cross-Stack Workflows
 
@@ -83,6 +84,6 @@
 - Backend: `backend/README.md`, `backend/docs/MAD_MONKEY_BACKEND_ARCHITECTURE.md`, `AUTH_FLOW.MD`, `ORDER_FLOW.md`, `ROOM_FLOW.md`.
 - Frontend: `frontend/README.md`, `frontend/docs/APP_STATE_AUTH_MIGRATION.md`, `frontend/docs/ANDROID_STATUS_BAR_CONFIGURATION.md`, `frontend/docs/kubernetes-deployment.md`, `frontend/utils/gtmTracker.ts`.
 - Infrastructure & Support: `backend/docker/README.md`, `ENV_SETUP_GUIDE.md`, `HOSTED_CHECKOUT_IMPLEMENTATION.md`.
-- Mobile Platform: `docs/MOBILE_PLATFORM_DOCUMENTATION.md` (mobile docs index), `frontend/docs/ANDROID_STATUS_BAR_CONFIGURATION.md` (Android status bar setup), `frontend/docs/IOS_SETTINGS_FIX.md` (iOS configuration).
+- Mobile Platform: `docs/MOBILE_PLATFORM_DOCUMENTATION.md` (mobile docs index), `frontend/docs/ANDROID_STATUS_BAR_CONFIGURATION.md` (Android status bar setup), `frontend/docs/ANDROID_SPLASH_SCREEN_CONFIGURATION.md` (Android splash screen setup), `frontend/docs/IOS_SETTINGS_FIX.md` (iOS configuration).
 
 This document summarizes the shared mental model for both teams—use it as the landing point before diving into domain-specific docs.
