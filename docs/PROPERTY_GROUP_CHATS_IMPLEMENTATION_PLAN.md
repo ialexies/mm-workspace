@@ -1,6 +1,6 @@
 # Auto-Managed Property Group Chats - Implementation Plan
 
-> **Roadmap document** – Use this as a reference when resuming work. Last updated: March 2025.
+> **Roadmap document** – Use this as a reference when resuming work. Last updated: March 2026.
 
 ## Implementation Checklist
 
@@ -97,6 +97,7 @@ flowchart TB
 
 Add methods (verified against [Sendbird Platform API v3](https://sendbird.com/docs/chat/platform-api/v3/)):
 
+- `getGroupChannel(channelUrl)`: `GET /v3/group_channels/{channel_url}?show_member=true` – **Important:** `show_member=true` is required so the response includes `members`. Without it, member removal (`leaveChannel`) never runs because `currentMemberIds` is empty.
 - `inviteToChannel(channelUrl, userIds)`: `POST /v3/group_channels/{channel_url}/invite` with `{ user_ids: [...] }`
 - `leaveChannel(channelUrl, userIds)`: `PUT /v3/group_channels/{channel_url}/leave` with `{ user_ids: [...] }`
 - `updateGroupChannel(channelUrl, params)`: `PUT /v3/group_channels/{channel_url}` – used to fix channel names (e.g. "Mad Monkey 269587" → "Mad Monkey Manila")
@@ -243,7 +244,7 @@ If no row is returned, that guest cannot be added to the property group chat.
 
 | File                                                | Action                                                                 |
 | --------------------------------------------------- | ---------------------------------------------------------------------- |
-| `backend/src/services/SendbirdService.ts`           | Add `inviteToChannel`, `leaveChannel`, `updateGroupChannel`            |
+| `backend/src/services/SendbirdService.ts`           | Add `inviteToChannel`, `leaveChannel`, `updateGroupChannel`; ensure `getGroupChannel` uses `show_member=true` for member removal to work |
 | `backend/src/services/PropertyGroupChatService.ts`  | **Create** – scheduler and membership logic                            |
 | `backend/src/routes/chat.ts`                        | Add `/property-groups/sync`, `/property-groups/ensure-membership`, `/property-groups`; deprecate destination |
 | `backend/src/index.ts`                              | Start PropertyGroupChatService when enabled                            |
@@ -310,6 +311,8 @@ Optional: `PROPERTY_GROUP_CHAT_CRON_INTERVAL_MS` (default: 24 hours) to run more
 
 Check logs for: `[PropertyGroupChatService] Starting (every N hours)` and `[PropertyGroupChatService] Scheduled run...`.
 
+**Sync debugging logs:** When adding guests to a property, the service logs each booking that contributes to membership: `[PropertyGroupChatService] Booking {reservationID} ({email}) adds customer_{id} to property {propertyId}`. Use this to trace which reservations keep a user in the channel.
+
 ### 3. Frontend Flow Testing
 
 | Flow | Steps |
@@ -335,6 +338,7 @@ Use test bookings with dates that fall inside/outside this window to confirm add
 | Channels not in Sendbird | MongoDB/PostgreSQL data present; scheduler or `ensure-membership` logs; Sendbird env vars |
 | Channel shows "Mad Monkey 269587" instead of property name | Add/update row in `destinations` with `property_id = '269587'` and `name = 'Manila'` (or correct name). Refresh `/my-chats` – ensure-membership will update the channel. |
 | Guest not removed 3 days after checkout | Sync runs in two passes: (1) properties with active bookings in overlap window, (2) all existing `property_group` channels not in pass 1 – those have desired members = empty, so all members are removed. Run `POST /chat/property-groups/sync` to trigger. |
+| User still in channel after sync (should have been removed) | `getGroupChannel` must request `show_member=true`. The Sendbird API returns members only when this query param is set. Without it, `currentMemberIds` is empty and `leaveChannel` is never called. See `backend/src/services/SendbirdService.ts` – ensure the request uses `?show_member=true`. |
 | Guest not added (has confirmed booking) | See "Why a guest might not be added" below |
 
 ### Why a Guest Might Not Be Added
