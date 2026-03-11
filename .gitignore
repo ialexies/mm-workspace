@@ -4,6 +4,7 @@ backend/
 
 # Common ignores
 node_modules/
+nul
 .env
 .env.local
 *.log

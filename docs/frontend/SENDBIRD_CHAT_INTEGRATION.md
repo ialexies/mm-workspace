@@ -261,7 +261,7 @@ function TravelersPage() {
 - ✅ Group chat avatars (composite avatars for 2-4 members)
 - ✅ Profile popup Message button interception
 - ✅ Channel creation from profile popups
-- ✅ Smart channel display names (1:1 shows other user, groups show "Mad Monkey Chat")
+- ✅ Smart channel display names (1:1 shows other user, groups show "Mad Monkey Chat", property groups show "Mad Monkey [Property Name]")
 - ✅ Mobile keyboard handling (automatic input positioning above keyboard)
 - ✅ Mobile swipe gestures (swipe right to close chat)
 
@@ -346,11 +346,33 @@ const handleMessageClick = async (guestId: number) => {
 />;
 ```
 
-### Destination-Based Group Channels
+### Property Group Chats (Current)
+
+**Scenario:** User wants to chat with other travelers at a specific property (e.g., "Mad Monkey Manila") during their stay.
+
+**Overview:** Property group chats are **auto-managed** – one channel per property, membership based on date window (check-in −14 days to checkout +3 days). No overlap logic. Channels appear automatically in `/my-chats` when the user has a qualifying booking.
+
+**Channel name format:** `Mad Monkey [Property Name]` (e.g. "Mad Monkey Manila"). Property names come from the `destinations` table; if missing, the channel may show "Mad Monkey {propertyId}" until corrected.
+
+**How it works:**
+1. User visits `/my-chats` – ChatChannelList calls `POST /chat/property-groups/ensure-membership` before fetching channels (fixes wrong names, ensures membership)
+2. Backend scheduler runs daily to add/remove members based on booking dates
+3. After booking, thanks page calls `ensure-membership` for short lead time
+4. Channels appear in the list via Sendbird SDK (no separate destination fetch)
+
+**Customer identification:** Guests are matched by **email only** – MongoDB `guestEmail` → PostgreSQL `customers.email`. `guestID` and profile IDs are not used. Only users with a row in `customers` (app signups) can be added.
+
+See `docs/PROPERTY_GROUP_CHATS_IMPLEMENTATION_PLAN.md` for full details.
+
+---
+
+### Destination-Based Group Channels (Deprecated)
 
 **Scenario:** User wants to chat with travelers at a specific destination (e.g., "Manila") whose bookings overlap with their own.
 
-**Overview:** Destination channels are automatically created for properties where users have upcoming bookings with overlapping guests. Uses **strict overlap logic** - users only see and chat with guests whose bookings directly overlap with their own, ensuring privacy. These channels appear in the `/my-chats` page.
+**Status:** Deprecated in favor of Property Group Chats above. `POST /chat/channels/destination` uses overlap logic and is no longer used by the frontend.
+
+**Overview:** Destination channels were created for properties where users had upcoming bookings with overlapping guests. Used **strict overlap logic** - users only saw guests whose bookings directly overlapped with their own.
 
 **How It Works:**
 
@@ -371,10 +393,11 @@ The backend uses strict overlap logic, meaning:
 - This ensures privacy: users who don't overlap with each other won't see each other
 - Multiple channels per destination are expected and normal
 
-**Implementation:**
+**Implementation (deprecated – property group chats no longer use this):**
 
 ```typescript
-// In pages/my-chats/index.tsx
+// DEPRECATED: Property group chats are now auto-managed. No loadDestinationChannels needed.
+// In pages/my-chats/index.tsx (legacy)
 import { fetchBookingHistory } from "@/services/v3-services/bookings";
 import { ChatService } from "@/v3/api";
 
@@ -425,20 +448,19 @@ useEffect(() => {
 }, [rehydrated, firebaseToken, customer, isInitialized]);
 ```
 
-**Display in ChatChannelList:**
+**Display in ChatChannelList (legacy):** Property groups now appear via Sendbird SDK; `destinationChannels={[]}` is passed. ChatChannelList calls `ensure-membership` on load.
 
 ```typescript
-// In components/molecules/ChatChannelList.tsx
+// In pages/my-chats/index.tsx - property groups come from Sendbird, no destination fetch
 <ChatChannelList
   onChannelSelect={handleChannelSelect}
-  destinationChannels={destinationChannels}
-  isLoadingDestinations={isLoadingDestinations}
+  destinationChannels={[]}
 />
 ```
 
-**Features:**
+**Features (legacy destination channels):**
 
-- ✅ Automatically created when user has upcoming bookings with overlapping guests
+- ⚠️ Deprecated – use Property Group Chats instead
 - ✅ Appears at the top of channel list (before regular channels)
 - ✅ Labeled with "(Destination)" badge
 - ✅ Shows "Chat with other travelers" subtitle

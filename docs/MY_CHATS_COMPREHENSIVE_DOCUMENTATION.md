@@ -104,7 +104,8 @@ Push notifications register (native apps only)
 **Purpose**: Displays list of chat channels with search functionality
 
 **Features**:
-- **Channel Types**: Supports Group Channels (1:1 DMs, group chats) and Open Channels
+- **Channel Types**: Supports Group Channels (1:1 DMs, property group chats) and Open Channels
+- **Property Group Chats**: One channel per property, named "Mad Monkey [Property Name]" (e.g. Mad Monkey Manila). Calls `ensure-membership` on load to fix existing channels with wrong names.
 - **Real-time Updates**: Uses Sendbird event handlers for live channel updates
 - **Search**: Client-side filtering by channel name or last message
 - **Sorting**: Channels sorted by last message timestamp (newest first)
@@ -118,17 +119,23 @@ Push notifications register (native apps only)
 
 **Channel Display Logic**:
 ```typescript
-// Only shows 1:1 DMs (filtered from group channels)
-const dmChannelsOnly = groupChannels.filter((ch) => isDirectMessage(ch));
+// Shows 1:1 DMs and property group channels (customType === 'property_group')
+const visibleGroupChannels = groupChannels.filter(
+  (ch) => isDirectMessage(ch) || ch.customType === 'property_group'
+);
 
-// Customer service always first, then DMs sorted by last message
+// Customer service always first, then DMs + property groups sorted by last message
 const allChannels = [
   { isCustomerService: true },
-  ...dmChannelsOnly.map(ch => ({ channel: ch }))
+  ...visibleGroupChannels.map(ch => ({ channel: ch }))
 ].sort((a, b) => {
   // Customer service first, then by timestamp
 });
 ```
+
+**Property Group Channel Names**: Before fetching channels, ChatChannelList calls `POST /chat/property-groups/ensure-membership`. This ensures the user is in the correct property channels and fixes any channels that were created with property ID instead of name (e.g. "Mad Monkey 269587" → "Mad Monkey Manila").
+
+**Customer Identification**: Only guests who exist in PostgreSQL `customers` (matched by email) are added to property groups. The sync uses `guestEmail` from MongoDB reservations; `guestID` and profile IDs are not used.
 
 **Event Handlers**:
 - `GroupChannelHandler`: Listens for channel changes, message received, user joined/left
