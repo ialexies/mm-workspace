@@ -17,7 +17,8 @@
 | 9 | OpenAPI + frontend API client (ChatService methods) | ✅ Done |
 | 10 | Property name resolution – `destinations` lookup, format "Mad Monkey [Property Name]" | ✅ Done |
 | 11 | ChatChannelList – call `ensure-membership` on load (fixes existing channels with wrong names) | ✅ Done |
-| 12 | Integration tests | ⬜ Pending |
+| 12 | Sendbird supergroup migration (create with `is_super: true`, in-place upgrade for existing groups) | ✅ Done |
+| 13 | Integration tests | ⬜ Pending |
 
 ---
 
@@ -231,12 +232,30 @@ If no row is returned, that guest cannot be added to the property group chat.
 
 ---
 
+## Sendbird supergroup channels
+
+Property group channels use **Sendbird supergroup** channels (same Platform API as group channels, with a higher member limit).
+
+- **Creation:** Channels are created with `is_super: true`, allowing up to **2,000+ members** per channel (Pro plan; varies by Sendbird plan).
+- **Initial create limit:** Sendbird allows max **100 users** in the initial `user_ids` array when creating a channel. Additional members are invited via `inviteToChannel` in batches of 100.
+- **Channel URL:** Unchanged: `property-group-{propertyId}`. No frontend or API URL changes.
+- **Lazy migration:** When sync runs and finds an existing **group** channel (legacy 100-member cap), it upgrades in-place via `PUT /group_channels/{url}` with `is_super: true`. **Message history is preserved.** Sendbird does not allow reusing a `channel_url` after delete, so delete+recreate is not used.
+
+**Supergroup limitations (Sendbird behavior; no code change):**
+
+- **Read/delivery receipts:** Not supported in supergroups.
+- **Unread count:** Capped at 99; display as "99+" when at or above 100.
+- **Push notifications:** With 100+ members, Sendbird applies a ~10-minute batching window; not every message triggers an immediate push.
+
+---
+
 ## Risks and Mitigations
 
 1. **Booking sync lag:** Cloudbeds data may be delayed. Document expected sync interval.
 2. **Sendbird rate limits:** Batch invite/leave in chunks of 100; add delays if needed.
 3. **Empty channels:** A property channel with zero members can exist. Sendbird allows it.
 4. **Existing destination channels:** Do not migrate; new flow uses `property_group` only. Old channels can be archived.
+5. **Supergroup migration:** First sync after deploy upgrades existing property group channels in-place (no delete); history is preserved.
 
 ---
 
@@ -244,7 +263,7 @@ If no row is returned, that guest cannot be added to the property group chat.
 
 | File                                                | Action                                                                 |
 | --------------------------------------------------- | ---------------------------------------------------------------------- |
-| `backend/src/services/SendbirdService.ts`           | Add `inviteToChannel`, `leaveChannel`, `updateGroupChannel`; ensure `getGroupChannel` uses `show_member=true` for member removal to work |
+| `backend/src/services/SendbirdService.ts`           | Add `inviteToChannel`, `leaveChannel`, `updateGroupChannel` (supports `is_super` for in-place upgrade); ensure `getGroupChannel` uses `show_member=true` for member removal to work |
 | `backend/src/services/PropertyGroupChatService.ts`  | **Create** – scheduler and membership logic                            |
 | `backend/src/routes/chat.ts`                        | Add `/property-groups/sync`, `/property-groups/ensure-membership`, `/property-groups`; deprecate destination |
 | `backend/src/index.ts`                              | Start PropertyGroupChatService when enabled                            |
@@ -281,7 +300,7 @@ curl -X POST "http://localhost:3000/chat/property-groups/ensure-membership" \
 
 Expected: `200` with `{ "added": ["property-group-<propertyId>", ...] }` or `{ "added": [] }`.
 
-**POST /chat/property-groups/sync** (manual full sync):
+**POST /chat/property-groups/sync** (manual sync):
 
 ```bash
 curl -X POST "http://localhost:3000/chat/property-groups/sync" \
@@ -289,6 +308,16 @@ curl -X POST "http://localhost:3000/chat/property-groups/sync" \
 ```
 
 Expected: `200` with `{ "propertiesProcessed": N, "errors": M }`.
+
+**POST /chat/property-groups/sync?propertyId=269587** (fast, per-property membership-only sync):
+
+- Adds/removes members only for the given property (e.g. Cloudbeds property ID `269587`).
+- **Skips the Sendbird user upsert loop**, so it runs much faster than a global sync. It assumes users generally exist in Sendbird already (via `/chat/token` or previous full syncs).
+
+```bash
+curl -X POST "http://localhost:3000/chat/property-groups/sync?propertyId=269587" \
+  -H "Authorization: Bearer <FIREBASE_ID_TOKEN>"
+```
 
 **GET /chat/property-groups** (list user’s property group channels):
 
@@ -308,6 +337,8 @@ AUTO_SYNC_PROPERTY_GROUP_CHATS=true
 ```
 
 Optional: `PROPERTY_GROUP_CHAT_CRON_INTERVAL_MS` (default: 24 hours) to run more often for testing.
+
+Optional: `PROPERTY_GROUP_CHAT_SENDBIRD_DELAY_MS` (default: 250) – delay in ms between each user upsert to avoid Sendbird rate limits (429 Too Many Requests). Sendbird allows ~10 req/sec; each upsert = 2 API calls.
 
 Check logs for: `[PropertyGroupChatService] Starting (every N hours)` and `[PropertyGroupChatService] Scheduled run...`.
 
