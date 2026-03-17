@@ -159,7 +159,7 @@ const allChannels = [
 #### Custom Header
 - **Desktop**: Inline header with avatar, name, search, info buttons
 - **Mobile**: Full-width header with back button
-- **Group Chats**: Shows split-circle avatar or group avatar
+- **Group Chats**: Shows split-circle avatar or group avatar; uses actual channel name (e.g. "Mad Monkey Dumaguete" for property supergroups)
 - **1:1 DMs**: Shows other user's profile picture
 
 #### Sendbird UIKit Integration
@@ -178,9 +178,9 @@ const allChannels = [
 - **Mobile**: Full-screen modal
 - **Desktop**: Sidebar panel
 - Shows channel information:
-  - Channel name
-  - Member list (for group chats)
-  - Member count
+  - Channel name (for property groups, uses actual name from Sendbird, e.g. "Mad Monkey Dumaguete")
+  - Member list (for group chats; truncated in supergroups)
+  - Member count (uses `memberCount` for supergroups—`members.length` is truncated; e.g. shows 1006 not 10)
   - Channel type (DM vs Group)
 - **Group Chats**: "Leave channel" button
 

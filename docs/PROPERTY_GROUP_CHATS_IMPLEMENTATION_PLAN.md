@@ -247,6 +247,11 @@ Property group channels use **Sendbird supergroup** channels (same Platform API 
 - **Unread count:** Capped at 99; display as "99+" when at or above 100.
 - **Push notifications:** With 100+ members, Sendbird applies a ~10-minute batching window; not every message triggers an immediate push.
 
+**Frontend display (ChatWindow):**
+
+- **Member count:** Use `channel.memberCount` for the displayed total, not `channel.members.length`. The Sendbird SDK truncates the `members` array for supergroups (e.g. to ~10), while `memberCount` holds the true total (e.g. 1006).
+- **Channel name:** Display the actual channel name from `channel.name` (e.g. "Mad Monkey Dumaguete") for property group chats. Fallback to "Mad Monkey Chat" only when the channel has no name set.
+
 ---
 
 ## Risks and Mitigations
@@ -269,6 +274,7 @@ Property group channels use **Sendbird supergroup** channels (same Platform API 
 | `backend/src/index.ts`                              | Start PropertyGroupChatService when enabled                            |
 | `backend/src/db/`                                   | New migration for property_group_* tables (optional)                   |
 | `frontend/components/molecules/ChatChannelList.tsx` | Include `property_group` channels; call `ensure-membership` on load; `includeEmpty: true`; remove destination usage |
+| `frontend/components/molecules/ChatWindow.tsx`      | Use `memberCount` for supergroup member display; use `channel.name` for group chat header (e.g. "Mad Monkey Dumaguete") |
 | `frontend/pages/my-chats/index.tsx`                 | Remove/simplify `loadDestinationChannels`                              |
 | Booking confirmation flow                           | Add call to ensure-membership after successful booking                 |
 | OpenAPI + frontend API client                       | Regenerate after new endpoints                                         |
@@ -312,10 +318,21 @@ Expected: `200` with `{ "propertiesProcessed": N, "errors": M }`.
 **POST /chat/property-groups/sync?propertyId=269587** (fast, per-property membership-only sync):
 
 - Adds/removes members only for the given property (e.g. Cloudbeds property ID `269587`).
-- **Skips the Sendbird user upsert loop**, so it runs much faster than a global sync. It assumes users generally exist in Sendbird already (via `/chat/token` or previous full syncs).
+- **Skips the Sendbird user upsert loop** by default, so it runs much faster than a global sync. It assumes users generally exist in Sendbird already (via `/chat/token` or previous full syncs).
+- **Retry-on-failure:** If an invite fails with "User not found", the sync upserts the batch to Sendbird and retries once, so a full sync is not required beforehand.
 
 ```bash
 curl -X POST "http://localhost:3000/chat/property-groups/sync?propertyId=269587" \
+  -H "Authorization: Bearer <FIREBASE_ID_TOKEN>"
+```
+
+**POST /chat/property-groups/sync?propertyId=269587&upsertUsers=true** (per-property sync with user upsert):
+
+- Same as above but **runs user upsert** for **that property's guests only** (not all users globally) before inviting. Slower but self-sufficient when many guests have never been synced to Sendbird.
+- Use when you want to avoid retry latency or ensure all users exist before inviting.
+
+```bash
+curl -X POST "http://localhost:3000/chat/property-groups/sync?propertyId=269587&upsertUsers=true" \
   -H "Authorization: Bearer <FIREBASE_ID_TOKEN>"
 ```
 
@@ -371,6 +388,7 @@ Use test bookings with dates that fall inside/outside this window to confirm add
 | Guest not removed 3 days after checkout | Sync runs in two passes: (1) properties with active bookings in overlap window, (2) all existing `property_group` channels not in pass 1 – those have desired members = empty, so all members are removed. Run `POST /chat/property-groups/sync` to trigger. |
 | User still in channel after sync (should have been removed) | `getGroupChannel` must request `show_member=true`. The Sendbird API returns members only when this query param is set. Without it, `currentMemberIds` is empty and `leaveChannel` is never called. See `backend/src/services/SendbirdService.ts` – ensure the request uses `?show_member=true`. |
 | Guest not added (has confirmed booking) | See "Why a guest might not be added" below |
+| "User" not found on per-property sync | Use `?upsertUsers=true` to run user upsert for that property's guests first, or retry—the sync will upsert missing users and retry invites on failure |
 
 ### Why a Guest Might Not Be Added
 
