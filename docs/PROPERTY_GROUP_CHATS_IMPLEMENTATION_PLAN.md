@@ -268,7 +268,7 @@ Property group channels use **Sendbird supergroup** channels (same Platform API 
 
 | File                                                | Action                                                                 |
 | --------------------------------------------------- | ---------------------------------------------------------------------- |
-| `backend/src/services/SendbirdService.ts`           | Add `inviteToChannel`, `leaveChannel`, `updateGroupChannel` (supports `is_super` for in-place upgrade); ensure `getGroupChannel` uses `show_member=true` for member removal to work |
+| `backend/src/services/SendbirdService.ts`           | Add `inviteToChannel`, `leaveChannel`, `updateGroupChannel` (supports `is_super` for in-place upgrade), `getAllChannelMemberIds` (paginated – required for supergroups; `channel.members` is truncated) |
 | `backend/src/services/PropertyGroupChatService.ts`  | **Create** – scheduler and membership logic                            |
 | `backend/src/routes/chat.ts`                        | Add `/property-groups/sync`, `/property-groups/ensure-membership`, `/property-groups`; deprecate destination |
 | `backend/src/index.ts`                              | Start PropertyGroupChatService when enabled                            |
@@ -361,6 +361,8 @@ Check logs for: `[PropertyGroupChatService] Starting (every N hours)` and `[Prop
 
 **Sync debugging logs:** When adding guests to a property, the service logs each booking that contributes to membership: `[PropertyGroupChatService] Booking {reservationID} ({email}) adds customer_{id} to property {propertyId}`. Use this to trace which reservations keep a user in the channel.
 
+**Supergroup member removal:** Property group channels are supergroups (2k+ members). Sendbird truncates `channel.members` in `getGroupChannel` responses (~100 members). The sync uses `getAllChannelMemberIds()` (paginated via `listChannelMembers`) to fetch the full member list before computing `toRemove`, ensuring cancelled users are correctly removed regardless of channel size.
+
 ### 3. Frontend Flow Testing
 
 | Flow | Steps |
@@ -386,7 +388,7 @@ Use test bookings with dates that fall inside/outside this window to confirm add
 | Channels not in Sendbird | MongoDB/PostgreSQL data present; scheduler or `ensure-membership` logs; Sendbird env vars |
 | Channel shows "Mad Monkey 269587" instead of property name | Add/update row in `destinations` with `property_id = '269587'` and `name = 'Manila'` (or correct name). Refresh `/my-chats` – ensure-membership will update the channel. |
 | Guest not removed 3 days after checkout | Sync runs in two passes: (1) properties with active bookings in overlap window, (2) all existing `property_group` channels not in pass 1 – those have desired members = empty, so all members are removed. Run `POST /chat/property-groups/sync` to trigger. |
-| User still in channel after sync (should have been removed) | `getGroupChannel` must request `show_member=true`. The Sendbird API returns members only when this query param is set. Without it, `currentMemberIds` is empty and `leaveChannel` is never called. See `backend/src/services/SendbirdService.ts` – ensure the request uses `?show_member=true`. |
+| User still in channel after sync (should have been removed) | **Fixed:** The sync uses `getAllChannelMemberIds()` (paginated) instead of `channel.members`, which Sendbird truncates for supergroups (~100 members). Cancelled users beyond the truncation were never in `toRemove`. See `backend/src/services/SendbirdService.ts` (`getAllChannelMemberIds`) and `PropertyGroupChatService.ts` (Pass 1 and Pass 2). |
 | Guest not added (has confirmed booking) | See "Why a guest might not be added" below |
 | "User" not found on per-property sync | Use `?upsertUsers=true` to run user upsert for that property's guests first, or retry—the sync will upsert missing users and retry invites on failure |
 
