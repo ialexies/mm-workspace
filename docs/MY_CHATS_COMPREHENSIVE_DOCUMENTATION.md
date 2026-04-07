@@ -140,6 +140,7 @@ const allChannels = [
 **Event Handlers**:
 - `GroupChannelHandler`: Listens for channel changes, message received, user joined/left
 - `OpenChannelHandler`: Listens for open channel updates
+- **Membership / list accuracy**: On `onUserLeft` and `onChannelChanged`, if the current user (from chat token `userId`) is no longer in `channel.members`, that channel is removed from local state so the row does not linger after the user leaves a group channel. (Supergroups may still truncate `members` in some SDK payloads; combined with `ensure-membership` on the next fetch, property group rows can reappear for guests with an active booking—see property group docs.)
 
 **Real-time Updates**:
 - New messages move channel to top
@@ -182,7 +183,11 @@ const allChannels = [
   - Member list (for group chats; truncated in supergroups)
   - Member count (uses `memberCount` for supergroups—`members.length` is truncated; e.g. shows 1006 not 10)
   - Channel type (DM vs Group)
-- **Group Chats**: "Leave channel" button
+
+#### Leave group channel (group chats only)
+
+- **Implementation**: For non-DM group channels (`isGroupChat()`), the app calls `SendbirdClient.leaveGroupChannel(channelUrl)` (SDK `groupChannel.getChannel` then `channel.leave()`), with the same connection guards as `getChannel`. On success, `onClose()` returns the user to the list. Errors surface via MUI `Snackbar` + `Alert`. A confirmation `Dialog` runs before the API call.
+- **UI visibility**: The two Leave affordances (outlined button in the info sidebar and the "Leave channel" row in the info panel) are **hidden with CSS** when `HIDE_LEAVE_GROUP_CHANNEL_UI` is `true` at the top of `ChatWindow.tsx`. Set it to `false` to show them again without rewiring handlers, dialog, or snackbar.
 
 #### Profile Popup Interception
 - Hides Sendbird's "User ID" field
@@ -314,6 +319,7 @@ if (Capacitor.isNativePlatform()) {
 - `initialize(config)`: Initialize SDK
 - `connect(token)`: Connect with access token
 - `getChannel(url)`: Get channel by URL
+- `leaveGroupChannel(url)`: Current user leaves that group channel (requires initialized client and open connection)
 - `registerPushToken(token, platform)`: Register push token
 - `setPushTriggerOption(option)`: Configure push behavior
 

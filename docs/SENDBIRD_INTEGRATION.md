@@ -169,6 +169,7 @@ sequenceDiagram
    - Custom MUI components integrated with Sendbird UIKit for brand consistency.
    - Entry points: header "Chat with us" CTA, booking detail pages, support drawers on mobile via Capacitor.
    - Custom chat components: `ChatChannelList`, `ChatWindow` with search, info sidebar, and profile redirects.
+   - **Group leave:** `SendbirdClient.leaveGroupChannel(channelUrl)` wraps the Chat SDK v4 group channel `leave()` with connection checks. `ChatWindow` wires confirmation, errors, and `onClose` after success. The Leave controls may be hidden via `HIDE_LEAVE_GROUP_CHANNEL_UI` in `ChatWindow.tsx` while keeping the implementation in place (see `docs/MY_CHATS_COMPREHENSIVE_DOCUMENTATION.md`).
    - **Mobile optimizations**: Keyboard handling for native apps (iOS/Android), swipe gestures for navigation, responsive drawer/modal layouts.
    - **Detailed Documentation**: See `frontend/docs/MY_CHATS_PAGE_DOCUMENTATION.md` for comprehensive UI/UX design, component architecture, keyboard handling, swipe gestures, and desktop/mobile layout details.
 

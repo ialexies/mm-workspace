@@ -252,6 +252,12 @@ Property group channels use **Sendbird supergroup** channels (same Platform API 
 - **Member count:** Use `channel.memberCount` for the displayed total, not `channel.members.length`. The Sendbird SDK truncates the `members` array for supergroups (e.g. to ~10), while `memberCount` holds the true total (e.g. 1006).
 - **Channel name:** Display the actual channel name from `channel.name` (e.g. "Mad Monkey Dumaguete") for property group chats. Fallback to "Mad Monkey Chat" only when the channel has no name set.
 
+**Leaving vs re-joining (guests):**
+
+- The client can call Sendbird `leave()` for a property group channel (see `SendbirdClient.leaveGroupChannel` and `ChatWindow`). **Leaving is immediate in Sendbird.**
+- `ChatChannelList` still calls **`POST /chat/property-groups/ensure-membership`** before every channel fetch. That endpoint re-invites the user when they have a booking in the membership window and are not in the channel. So **the same property group channel can show again** on the next list load even after a successful leave—this is expected until product adds an opt-out or backend skips re-invite for users who left voluntarily.
+- **Leave UI:** The Leave button/row can be toggled with **`HIDE_LEAVE_GROUP_CHANNEL_UI`** in `ChatWindow.tsx` (when `true`, controls use `display: none` but handlers remain for later use). See `docs/MY_CHATS_COMPREHENSIVE_DOCUMENTATION.md`.
+
 ---
 
 ## Risks and Mitigations
@@ -274,7 +280,7 @@ Property group channels use **Sendbird supergroup** channels (same Platform API 
 | `backend/src/index.ts`                              | Start PropertyGroupChatService when enabled                            |
 | `backend/src/db/`                                   | New migration for property_group_* tables (optional)                   |
 | `frontend/components/molecules/ChatChannelList.tsx` | Include `property_group` channels; call `ensure-membership` on load; `includeEmpty: true`; remove destination usage |
-| `frontend/components/molecules/ChatWindow.tsx`      | Use `memberCount` for supergroup member display; use `channel.name` for group chat header (e.g. "Mad Monkey Dumaguete") |
+| `frontend/components/molecules/ChatWindow.tsx`      | Use `memberCount` for supergroup member display; use `channel.name` for group chat header; optional **Leave group** flow (`leaveGroupChannel`, confirm dialog, snackbar); **Leave UI** gated by `HIDE_LEAVE_GROUP_CHANNEL_UI` when hidden |
 | `frontend/pages/my-chats/index.tsx`                 | Remove/simplify `loadDestinationChannels`                              |
 | Booking confirmation flow                           | Add call to ensure-membership after successful booking                 |
 | OpenAPI + frontend API client                       | Regenerate after new endpoints                                         |
