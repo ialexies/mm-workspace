@@ -11,6 +11,10 @@
     {
       "name": "Backend",
       "path": "./backend"
+    },
+    {
+      "name": "MMK-WP",
+      "path": "../mmk-wp"
     }
   ],
   "settings": {
