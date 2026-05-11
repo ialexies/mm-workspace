@@ -1,0 +1,10 @@
+]633;D;2]633;P;Cwd=F:/madmonkey2/MM_V3]633;E;kubectl exec -n staging deploy/backend -- bun -e "const p=process.env.PORT||'3000'\x3b const r=await fetch(`http://127.0.0.1:${p}/`)\x3b console.log(r.status, await r.text())\x3b";aaad0b52-599b-4ca6-804f-a82c78cf8f41]633;C]633;D;1]633;P;Cwd=F:/madmonkey2/MM_V3]633;E;kubectl exec -n staging deploy/backend -- bun -e 'const p=process.env.PORT||"3000"\x3b const r=await fetch("http://127.0.0.1:"+p+"/")\x3b console.log(r.status, await r.text())\x3b';aaad0b52-599b-4ca6-804f-a82c78cf8f41]633;C200 Hello Mad Monkey!
+]633;D;0]633;P;Cwd=F:/madmonkey2/MM_V3]633;E;kubectl exec -n staging deploy/backend -- bun -e 'const p=process.env.PORT||"3000"\x3b const b="http://127.0.0.1:"+p\x3b for (const path of ["/geofences","/geofences/"]) { const r=await fetch(b+path)\x3b console.log(path, r.status)\x3b }';aaad0b52-599b-4ca6-804f-a82c78cf8f41]633;C/geofences 404
+/geofences/ 404
+]633;D;0]633;P;Cwd=F:/madmonkey2/MM_V3]633;E;kubectl exec -n staging deploy/backend -- printenv PORT;aaad0b52-599b-4ca6-804f-a82c78cf8f41]633;C3000
+]633;D;0]633;P;Cwd=F:/madmonkey2/MM_V3]633;E;kubectl exec -n staging deploy/backend -- bun -e 'console.log("ok-from-bun")';aaad0b52-599b-4ca6-804f-a82c78cf8f41]633;Cok-from-bun
+]633;D;0]633;P;Cwd=F:/madmonkey2/MM_V3]633;E;kubectl get pod -n staging -l app=backend -o jsonpath="{range .items[0].spec.containers[*]}{.name}{'\\n'}{end}";aaad0b52-599b-4ca6-804f-a82c78cf8f41]633;Cbackend
+]633;D;0]633;P;Cwd=F:/madmonkey2/MM_V3]633;E;kubectl get pod -n staging -l app=backend -o jsonpath="{range .items[0].spec.containers[*]}{.name}{'\\n'}{end}";aaad0b52-599b-4ca6-804f-a82c78cf8f41]633;Cbackend
+]633;D;0]633;P;Cwd=F:/madmonkey2/MM_V3]633;E;echo $?;aaad0b52-599b-4ca6-804f-a82c78cf8f41]633;C0
+]633;D;0]633;P;Cwd=F:/madmonkey2/MM_V3]633;E;kubectl exec -n staging deploy/backend -- sh -c 'echo hello-from-container';aaad0b52-599b-4ca6-804f-a82c78cf8f41]633;Chello-from-container
+]633;D;0]633;P;Cwd=F:/madmonkey2/MM_V3

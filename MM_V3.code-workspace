@@ -14,7 +14,7 @@
     },
     {
       "name": "MMK-WP",
-      "path": "../mmk-wp"
+      "path": "./mmk-wp"
     }
   ],
   "settings": {
