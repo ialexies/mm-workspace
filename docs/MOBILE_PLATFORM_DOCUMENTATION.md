@@ -29,37 +29,37 @@ Comprehensive guide covering:
 ## iOS
 
 ### Settings Fix
-**File**: `frontend/docs/IOS_SETTINGS_FIX.md`
+**File**: `docs/IOS_SETTINGS_FIX.md`
 
 Documentation for iOS-specific configuration fixes and settings.
 
 ## Cross-Platform
 
 ### Chat Window Keyboard Handling
-**File**: `frontend/docs/CHATWINDOW_KEYBOARD_HANDLING.md`
+**File**: [`frontend/docs/CHATWINDOW_KEYBOARD_HANDLING.md`](../frontend/docs/CHATWINDOW_KEYBOARD_HANDLING.md) (canonical, most detailed).
 
-Documentation for keyboard handling in chat windows across mobile platforms.
+A shorter umbrella copy exists at [`docs/CHATWINDOW_KEYBOARD_HANDLING.md`](./CHATWINDOW_KEYBOARD_HANDLING.md).
 
 ### SendBird Integration
-**Files**:
-- `frontend/docs/SENDBIRD_INTEGRATION.md` - Main integration documentation
-- `frontend/docs/MY_CHATS_COMPREHENSIVE_DOCUMENTATION.md` - Comprehensive chat feature docs
-- `frontend/docs/SENDBIRD_IMAGE_ATTACHMENTS_SUMMARY.md` - Image attachment handling
-- `frontend/docs/SENDBIRD_DISCOVERY_QUESTIONS.md` - Discovery and Q&A features
+**Files** (tracked at workspace `docs/`):
+- [`SENDBIRD_INTEGRATION.md`](./SENDBIRD_INTEGRATION.md) – Main integration documentation
+- [`MY_CHATS_COMPREHENSIVE_DOCUMENTATION.md`](./MY_CHATS_COMPREHENSIVE_DOCUMENTATION.md) – Comprehensive chat feature docs
+- [`SENDBIRD_IMAGE_ATTACHMENTS_SUMMARY.md`](./SENDBIRD_IMAGE_ATTACHMENTS_SUMMARY.md) – Image attachment handling
+- [`SENDBIRD_DISCOVERY_QUESTIONS.md`](./SENDBIRD_DISCOVERY_QUESTIONS.md) – Discovery and Q&A features
 
 ## Architecture Reference
 
 For high-level architecture information, see:
-- `ARCHITECTURE.md` - Full-stack architecture overview
-- `frontend/docs/DOCUMENTATION_UPDATE_SUMMARY.md` - Recent documentation updates
+- [`ARCHITECTURE.md`](../ARCHITECTURE.md) – Full-stack architecture overview
+- [`frontend/docs/DOCUMENTATION_UPDATE_SUMMARY.md`](../frontend/docs/DOCUMENTATION_UPDATE_SUMMARY.md) – Recent frontend-facing documentation changelog
 
 ## Quick Links
 
 - [Android Status Bar Configuration](../frontend/docs/ANDROID_STATUS_BAR_CONFIGURATION.md)
-- [iOS Settings Fix](../frontend/docs/IOS_SETTINGS_FIX.md)
+- [iOS Settings Fix](./IOS_SETTINGS_FIX.md)
 - [Chat Window Keyboard Handling](../frontend/docs/CHATWINDOW_KEYBOARD_HANDLING.md)
-- [SendBird Integration](../frontend/docs/SENDBIRD_INTEGRATION.md)
+- [SendBird Integration](./SENDBIRD_INTEGRATION.md)
 
 ---
 
-_Last Updated: January 2025_
+_Last Updated: May 2026_

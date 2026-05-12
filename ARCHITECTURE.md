@@ -5,7 +5,9 @@
 - **Frontend**: Next.js application (`frontend/`) styled with MUI, state managed by Redux Toolkit, and hydrated by a generated TypeScript API client (`frontend/v3/api`). Ships as a web app, with iOS/Android builds via Capacitor for native shells. Google Tag Manager, Sentry, and deep-link listeners provide analytics, observability, and app integration.
 - **Backend**: Bun + Hono service (`backend/`) exposing REST APIs described with `@hono/zod-openapi`. Drizzle ORM talks to PostgreSQL for transactional data; MongoDB, Redis, and RabbitMQ support caching, external system sync, and event-driven workflows. Integrations cover Stripe, Cloudbeds, Rezdy, Firebase Admin, and n8n automation.
 - **API Contract**: OpenAPI schema served from `backend/src/openapi` and consumed by the frontend code generator (`npm run gen:api`) to keep the stack type-safe.
+- **WordPress (`mmk-wp/`)**: WordPress codebase included as a **Git submodule** in this umbrella repo for CMS and legacy/marketing workflows. Details live with that subtree’s README and conventions; it does not ship the Next.js traveller app bundle.
 - **Infrastructure**: Dockerized services for local development (Postgres, MongoDB, RabbitMQ, Redis). Deployments typically run the frontend on Vercel (or coupled DigitalOcean app) and the backend on DigitalOcean with managed databases and queues.
+- **This repo’s `docs/` folder**: Holds cross-cutting narratives (mobile index, Sendbird, property chat plans) tracked at the umbrella level; **`frontend/docs/`** and **`backend/docs/`** remain the exhaustive per-package notebooks.
 
 ### Backend Architecture (`backend/`)
 
@@ -82,9 +84,9 @@
 
 ### Reference Documents
 
-- Backend: `backend/README.md`, `backend/docs/MAD_MONKEY_BACKEND_ARCHITECTURE.md`, `AUTH_FLOW.MD`, `ORDER_FLOW.md`, `ROOM_FLOW.md`.
-- Frontend: `frontend/README.md`, `frontend/docs/APP_STATE_AUTH_MIGRATION.md`, `frontend/docs/ANDROID_STATUS_BAR_CONFIGURATION.md`, `frontend/docs/kubernetes-deployment.md`, `frontend/utils/gtmTracker.ts`.
-- Infrastructure & Support: `backend/docker/README.md`, `ENV_SETUP_GUIDE.md`, `HOSTED_CHECKOUT_IMPLEMENTATION.md`.
-- Mobile Platform: `docs/MOBILE_PLATFORM_DOCUMENTATION.md` (mobile docs index), `frontend/docs/ANDROID_GRADLE_BUILD_CONFIGURATION.md` (Android build setup), `frontend/docs/ANDROID_STATUS_BAR_CONFIGURATION.md` (Android status bar setup), `frontend/docs/ANDROID_SPLASH_SCREEN_CONFIGURATION.md` (Android splash screen setup), `frontend/docs/IOS_SETTINGS_FIX.md` (iOS configuration).
+- **Backend**: `backend/README.md`, `backend/docs/MAD_MONKEY_BACKEND_ARCHITECTURE.md`, `AUTH_FLOW.MD`, `ORDER_FLOW.md`, `ROOM_FLOW.md`.
+- **Frontend**: `frontend/README.md`, `frontend/docs/APP_STATE_AUTH_MIGRATION.md`, `frontend/docs/kubernetes-deployment.md`, `frontend/utils/gtmTracker.ts`; Android Gradle / StatusBar / splash guides under `frontend/docs/ANDROID_*`.
+- **Umbrella (this repo)** / cross-cutting chat & mobile index: `docs/MOBILE_PLATFORM_DOCUMENTATION.md`, `docs/SENDBIRD_INTEGRATION.md`, `docs/MY_CHATS_COMPREHENSIVE_DOCUMENTATION.md`, `docs/PROPERTY_GROUP_CHAT_CS_GUIDE.md`, `docs/IOS_SETTINGS_FIX.md`, `docs/frontend/PUSH_NOTIFICATIONS.md`, `docs/frontend/PUSH_NOTIFICATIONS_ARCHITECTURE.md`.
+- **Infrastructure & Support**: `backend/docker/README.md`, `ENV_SETUP_GUIDE.md`, `HOSTED_CHECKOUT_IMPLEMENTATION.md` (paths relative to whichever repo owns each file).
 
 This document summarizes the shared mental model for both teams—use it as the landing point before diving into domain-specific docs.

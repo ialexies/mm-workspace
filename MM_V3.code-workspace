@@ -29,7 +29,8 @@
       "**/dist": true
     },
     "typescript.preferences.importModuleSpecifier": "relative",
-    "java.configuration.updateBuildConfiguration": "automatic"
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "liveServer.settings.multiRootWorkspaceName": "Frontend"
   }
 }
 
