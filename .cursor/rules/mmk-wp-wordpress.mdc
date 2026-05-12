@@ -1,0 +1,11 @@
+---
+description: WordPress subtree — PHP/theme/plugins conventions only under mmk-wp
+globs: mmk-wp/**/*
+alwaysApply: false
+---
+
+# MMK-WP (`mmk-wp/`)
+
+- Separate **WordPress / PHP** codebase (**Git submodule**). Not part of the Next.js bundle or Bun API tree.
+- Do **not** import TypeScript from `frontend/` or `backend/` here, or vice versa.
+- Prefer this subtree’s own README, Composer/NPM tooling (if present), and WordPress idioms (`wp_enqueue_*`, hooks, themes, plugins).

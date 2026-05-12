@@ -10,5 +10,6 @@ This folder is an **umbrella workspace** used in Cursor / VS Code. Application c
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | End-to-end stack overview (Next.js app, Bun/Hono API, integrations) |
 | [docs/MOBILE_PLATFORM_DOCUMENTATION.md](./docs/MOBILE_PLATFORM_DOCUMENTATION.md) | Index of mobile-specific docs (Android, iOS, chat) |
 | [TODO.md](./TODO.md) | Ad-hoc task list for this umbrella repo |
+| [`.cursor/rules/`](./.cursor/rules/) | Cursor Agent rules (shared stack truth + per-folder Next / Hono / WordPress scopes) |
 
 For day-to-day app development, prefer each package’s own `README.md` under `frontend/` and `backend/`.

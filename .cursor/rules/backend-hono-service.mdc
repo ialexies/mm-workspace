@@ -1,0 +1,14 @@
+---
+description: Bun + Hono API — routes, OpenAPI, Drizzle, Firebase verification
+globs: backend/**/*
+alwaysApply: false
+---
+
+# Backend (`backend/`)
+
+- **Runtime**: **Bun**; entry and app wiring typically under `backend/src/` (e.g. `src/index.ts`, middleware).
+- **HTTP**: **Hono** routers in `backend/src/routes/`; validation and OpenAPI export live next to **`src/openapi/`** schemas.
+- **PostgreSQL**: **Drizzle** models and migrations in `backend/` (e.g. `drizzle/`, Drizzle configs). Prefer migrations and repositories already used nearby when adding persistence.
+- **Auth**: Middleware validates **Firebase JWTs** via **Firebase Admin**; extend existing auth helpers rather than ad-hoc token parsing.
+- **Integrations**: Stripe, Cloudbeds, Rezdy, RabbitMQ event bus, etc. exist — follow neighbouring `src/services/` patterns before new integration styles.
+- **Docs**: Prefer `backend/docs/` and README for deployment, webhooks, and operational runbooks when changing behaviour that operators document.

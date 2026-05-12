@@ -21,7 +21,8 @@ You may see other directories on disk (for example tooling or experiments). If t
 
 ## Umbrella-local files (not part of Frontend/Backend repos)
 
-- `.cursorrules` – Cursor AI context for this combined workspace  
+- `.cursor/rules/*.mdc` – **Project rules** for Cursor (scoped by path + always-on stack/umbrella notes)  
+- `.cursorrules` – Short pointer to `.cursor/rules/` (for tools that only read the root file)  
 - `.cursorignore` – Cursor ignore patterns  
 - `MM_V3.code-workspace` – Workspace definition  
 

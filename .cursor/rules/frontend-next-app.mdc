@@ -1,0 +1,14 @@
+---
+description: Next.js traveller app — routing, state, aliases, Capacitor, API client
+globs: frontend/**/*
+alwaysApply: false
+---
+
+# Frontend (`frontend/`)
+
+- **Framework**: **Next.js** with **Pages Router** — routes under `frontend/pages/`; shared UI under `frontend/components/`; global styles / theme via MUI (`frontend/theme/`).
+- **state**: **Redux Toolkit** in `frontend/store/`; keep new global booking/auth/cart flows consistent with slices there.
+- **Imports**: **`@/*` → `frontend/*`** (see `frontend/tsconfig`).
+- **API**: Use the **generated OpenAPI client** in `frontend/v3/api/`; align request shapes with backend Zod/OpenAPI—not guess field names on critical paths.
+- **Mobile**: **Capacitor** config and native dirs (`frontend/android/`, `frontend/ios/`). Follow existing native + web conditional patterns before adding plugin usage.
+- **Deep links / analytics**: Project uses patterns like deep-link hooks and **GTM** / **Sentry** — reuse utilities under `frontend/utils/` and existing config files rather than introducing parallel trackers.

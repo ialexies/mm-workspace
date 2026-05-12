@@ -1,0 +1,13 @@
+---
+description: Authoritative auth, API, and database stack — avoids conflicting tooling assumptions
+alwaysApply: true
+---
+
+# MM V3 stack (authoritative)
+
+- **HTTP API**: Bun + **Hono** in `backend/`. Contracts are typed with **`@hono/zod-openapi`** and published as OpenAPI (`backend/src/openapi/`). The Next app calls this API via the **generated client** (`frontend/v3/api/`), not ad-hoc fetch wrappers for the same endpoints unless the codebase already does.
+- **Primary relational data**: **PostgreSQL** behind the API using **Drizzle ORM** (`backend/drizzle/`, migrations, `src/` services). Prefer this wording for persistence and migrations.
+- **Other backend data paths**: MongoDB, Redis, and RabbitMQ appear in integrations (caching, events, upstream mirrors). Follow existing patterns in `backend/src/services/`; do not add parallel event or cache layers casually.
+- **Authentication**: **Firebase Auth** on the client; backend verifies **Firebase JWTs** (`Authorization: Bearer …`) via Firebase Admin. Keep this lifecycle when proposing auth fixes.
+- **Supabase**: Some docs assume **Firebase + Supabase**. In this codebase, **`@supabase/supabase-js` is not assumed** for traveller CRUD. If Postgres is hosted on Supabase, treat it as the **PostgreSQL host** unless you find explicit Supabase client usage in the touched files—default implementation guidance stays **Drizzle + Hono**.
+- Do not steer new server features toward a second “stack” (e.g. replacing Hono REST with unrelated BaaS clients) unless the user explicitly asks for that migration.
