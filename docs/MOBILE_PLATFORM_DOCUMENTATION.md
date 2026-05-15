@@ -47,6 +47,12 @@ A shorter umbrella copy exists at [`docs/CHATWINDOW_KEYBOARD_HANDLING.md`](./CHA
 - [`SENDBIRD_IMAGE_ATTACHMENTS_SUMMARY.md`](./SENDBIRD_IMAGE_ATTACHMENTS_SUMMARY.md) – Image attachment handling
 - [`SENDBIRD_DISCOVERY_QUESTIONS.md`](./SENDBIRD_DISCOVERY_QUESTIONS.md) – Discovery and Q&A features
 
+### Klaviyo WhatsApp marketing & geofencing
+
+**Canonical doc:** [`frontend/docs/KLAVIYO_WHATSAPP_MARKETING_OPT_IN.md`](../frontend/docs/KLAVIYO_WHATSAPP_MARKETING_OPT_IN.md)
+
+Native Capacitor builds only: after **sign-in** and **auth rehydration**, the traveller may accept **`GeofenceLocationDisclosure`**, which bundles **nearby-location / geofence** use with **WhatsApp marketing** consent (no separate checkbox). When the **OS** grants location and the background watcher reports a valid fix, the app calls **`POST /marketing/whatsapp-consent`** once per user (after success), backed by Klaviyo Profiles API on the server. Logged-out users do not enter this pipeline.
+
 ## Architecture Reference
 
 For high-level architecture information, see:
@@ -58,6 +64,7 @@ For high-level architecture information, see:
 - [Android Status Bar Configuration](../frontend/docs/ANDROID_STATUS_BAR_CONFIGURATION.md)
 - [iOS Settings Fix](./IOS_SETTINGS_FIX.md)
 - [Chat Window Keyboard Handling](../frontend/docs/CHATWINDOW_KEYBOARD_HANDLING.md)
+- [Klaviyo WhatsApp marketing opt-in (geofence)](../frontend/docs/KLAVIYO_WHATSAPP_MARKETING_OPT_IN.md)
 - [SendBird Integration](./SENDBIRD_INTEGRATION.md)
 
 ---

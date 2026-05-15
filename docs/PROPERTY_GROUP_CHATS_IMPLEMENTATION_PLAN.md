@@ -1,6 +1,7 @@
 # Auto-Managed Property Group Chats - Implementation Plan
 
-> **Roadmap document** – Use this as a reference when resuming work. Last updated: March 2026.
+> **Roadmap document** – Use this as a reference when resuming work. For admin DB tables and scripts, see `backend/docs/PROPERTY_GROUP_CHAT_ADMINS.md`.  
+> **Last updated:** May 2026.
 
 ## Implementation Checklist
 
@@ -8,7 +9,7 @@
 |---|------|--------|
 | 1 | Extend SendbirdService (`inviteToChannel`, `leaveChannel`, `updateGroupChannel`) | ✅ Done |
 | 2 | Create PropertyGroupChatService (scheduler, membership logic) | ✅ Done |
-| 3 | Database migration (`property_group_*` tables) | ⏭️ Skipped (optional) |
+| 3 | Database migration (`property_group_*` admin tables + Drizzle journal) | ✅ Done — see `backend/docs/PROPERTY_GROUP_CHAT_ADMINS.md` |
 | 4 | API endpoints (`sync`, `ensure-membership`, `list`) | ✅ Done |
 | 5 | ChatChannelList – DMs + `property_group` channels | ✅ Done |
 | 6 | my-chats page – remove `loadDestinationChannels`, pass `destinationChannels={[]}` | ✅ Done |
@@ -118,16 +119,17 @@ All support up to 100 users per request. Default invitation behavior joins users
 - **Batch invite/leave:** Chunk userIds in groups of 100
 - Start/stop via env (e.g., `AUTO_SYNC_PROPERTY_GROUP_CHATS=true`), similar to Cloudbeds
 
-**3. Database Migration** (optional but recommended)
+**3. Database — property group chat admins** (implemented)
 
-- `property_group_channels`: `property_id`, `property_name`, `channel_url`, `last_synced_at`
-- `property_group_memberships`: `channel_url`, `customer_id`, `booking_id`, `added_at`, `removed_at`
+- Tables: `property_group_chat_admins`, `property_group_chat_admin_properties` (migration `0022_property_group_chat_admins.sql`, journal entry required).
+- Sync reads admins via `loadPropertyGroupChatAdmins()` from Postgres (`scope`: global vs scoped by property).
+- Ops scripts: `seed-property-group-chat-admins.ts`, `sync-property-group-admins-from-sheet.ts`; doc: `backend/docs/PROPERTY_GROUP_CHAT_ADMINS.md`.
 
-Use for idempotency, auditing, and avoiding redundant Sendbird API calls.
+The older optional sketch (`property_group_channels` / `property_group_memberships`) was **not** implemented; Sendbird remains source for channel membership, Postgres for admin allowlists.
 
 **4. API Endpoints** (`backend/src/routes/chat.ts`)
 
-- `POST /chat/property-groups/sync` – manual trigger (admin or internal use); also updates wrong channel names
+- `POST /chat/property-groups/sync` – manual trigger (admin or internal use); also updates wrong channel names. Optional **`propertyId`** (query or JSON body) limits work to **one** property channel and skips Pass 2 orphan cleanup; optional **`upsertUsers=true`** to run Sendbird user upserts during that pass.
 - `POST /chat/property-groups/ensure-membership` – ensure current user's membership and fix wrong channel names (call after booking, and on my-chats load)
 - `GET /chat/property-groups` – list user's property group channels (for UI context if needed)
 
@@ -172,7 +174,7 @@ Use for idempotency, auditing, and avoiding redundant Sendbird API calls.
 | Backend startup + env | Server starts with `AUTO_SYNC_PROPERTY_GROUP_CHATS=true` | Scheduler runs immediately, then every 24h (or `PROPERTY_GROUP_CHAT_CRON_INTERVAL_MS`) |
 | User visits `/my-chats` | Channel list loads | `ensure-membership` called before fetching channels |
 | User completes booking | Lands on `/booking/thanks` | `ensure-membership` called |
-| Manual API call | `POST /chat/property-groups/sync` | Full sync run |
+| Manual API call | `POST /chat/property-groups/sync` | Full sync, **or** partial: `?propertyId=<id>` (+ optional `upsertUsers=true`) |
 
 ---
 

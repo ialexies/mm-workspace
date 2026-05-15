@@ -17,9 +17,11 @@ A guest is added to **that property’s** group chat when **all** of the followi
 
 ## **Staff / admin** access
 
-- Internal **admin emails** are set in backend configuration (`PROPERTY_GROUP_CHAT_ADMIN_EMAILS`).
-- Those accounts are added to **every** property group chat, as long as each email exists as a **customer** in our database.
-- Changing who is on that list is done by **engineering / ops** — not via Sendbird or app settings by CS.
+- Staff admins are stored in **Postgres**: tables **`property_group_chat_admins`** and **`property_group_chat_admin_properties`** (for property-specific access).
+- **Global** admins are included in **every** property group chat; **scoped** admins only for configured **`property_id`** values (Cloudbeds IDs).
+- Each listed person must still exist as a **customer** in our database (`customers` row).
+- Changing who has access is done by **engineering / ops** (SQL or scripts — see `backend/docs/PROPERTY_GROUP_CHAT_ADMINS.md`), not via Sendbird or app settings by CS.
+- Legacy env **`PROPERTY_GROUP_CHAT_ADMIN_EMAILS`** may still be used **only when running seed scripts**; the running backend sync reads **from the database**, not from that env var.
 
 ## “I don’t see the property chat” — quick checks
 
@@ -41,4 +43,4 @@ A guest is added to **that property’s** group chat when **all** of the followi
 
 ---
 
-_For technical detail: `PROPERTY_GROUP_CHATS_IMPLEMENTATION_PLAN.md` and backend `PropertyGroupChatService.ts`._
+_For technical detail: `PROPERTY_GROUP_CHATS_IMPLEMENTATION_PLAN.md`, `backend/docs/PROPERTY_GROUP_CHAT_ADMINS.md`, and backend `PropertyGroupChatService.ts`._

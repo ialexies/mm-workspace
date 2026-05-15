@@ -25,6 +25,7 @@
   - **Bookings**: Stripe payment intents drive checkout. Webhooks from Stripe, Cloudbeds, and Rezdy funnel through RabbitMQ, updating Mongo caches and triggering downstream actions (`ORDER_FLOW.md`, `ROOM_FLOW.md`).
   - **Events**: RabbitMQ event bus (`EVENTBUS_RECOVERY_GUIDE.md`) ensures reliable processing with dead-letter handling and recovery scripts (`scripts/`).
   - **Automation**: n8n workflows consume event bus messages for email, CRM, and marketing automation (`N8N_NOTIFICATION_SERVICE.md`).
+  - **Marketing / Klaviyo**: Firebase-authenticated `POST /marketing/whatsapp-consent` resolves the traveller in Postgres and subscribes WhatsApp marketing on the Klaviyo profile (`backend/src/routes/marketing.ts`, `KlaviyoProfilesClient`). Intended trigger on native: first authorised location fix after the user accepts bundled geofence + WhatsApp disclosure—see `frontend/docs/KLAVIYO_WHATSAPP_MARKETING_OPT_IN.md`.
 - **Code Structure Highlights**
   - `src/services`: business logic (payments, availability, media, loyalty).
   - `src/utils`: cross-cutting helpers (logging, error wrappers, Cloudbeds/Rezdy adapters).
@@ -47,6 +48,7 @@
   - Sentry configured for both client and server runtimes (`sentry.client.config.ts`, `sentry.server.config.ts`), capturing SSR/API errors and performance traces.
   - Deep linking support via hooks (`hooks/useDeepLinkListener`) integrates with Capacitor and web query parsing, enabling `madmonkey://` transport into booking thanks pages.
   - Gesture navigation, platform-specific assets, and offline considerations live alongside platform directories (`ios/`, `android/`).
+  - **Native geofencing + WhatsApp opt-in**: On Capacitor builds, signed-in users who accept **`GeofenceLocationDisclosure`** enable background geolocation for Klaviyo-backed perimeter alerts; the same flow bundles **WhatsApp marketing** consent and fires a **deduped** `MarketingService.postMarketingWhatsappConsent` call after the OS grants location (details in `frontend/docs/KLAVIYO_WHATSAPP_MARKETING_OPT_IN.md`).
   - Android Gradle build configuration (`docs/ANDROID_GRADLE_BUILD_CONFIGURATION.md`) documents build setup, keystore configuration, API level compatibility patterns, lint configuration, and solutions for common build issues including deprecated repository warnings and version-specific Android API usage.
   - Android status bar configuration (`docs/ANDROID_STATUS_BAR_CONFIGURATION.md`) documents Capacitor StatusBar plugin usage, Android API 35+ edge-to-edge compatibility, and native Java configuration for proper icon visibility.
   - Android splash screen configuration (`docs/ANDROID_SPLASH_SCREEN_CONFIGURATION.md`) explains the splash screen setup to prevent white screen issues when loading remote content, covering timing configurations, JavaScript enhancements, and the differences between development and production deployments.
@@ -86,7 +88,7 @@
 
 - **Backend**: `backend/README.md`, `backend/docs/MAD_MONKEY_BACKEND_ARCHITECTURE.md`, `AUTH_FLOW.MD`, `ORDER_FLOW.md`, `ROOM_FLOW.md`.
 - **Frontend**: `frontend/README.md`, `frontend/docs/APP_STATE_AUTH_MIGRATION.md`, `frontend/docs/kubernetes-deployment.md`, `frontend/utils/gtmTracker.ts`; Android Gradle / StatusBar / splash guides under `frontend/docs/ANDROID_*`.
-- **Umbrella (this repo)** / cross-cutting chat & mobile index: `docs/MOBILE_PLATFORM_DOCUMENTATION.md`, `docs/SENDBIRD_INTEGRATION.md`, `docs/MY_CHATS_COMPREHENSIVE_DOCUMENTATION.md`, `docs/PROPERTY_GROUP_CHAT_CS_GUIDE.md`, `docs/IOS_SETTINGS_FIX.md`, `docs/frontend/PUSH_NOTIFICATIONS.md`, `docs/frontend/PUSH_NOTIFICATIONS_ARCHITECTURE.md`.
+- **Umbrella (this repo)** / cross-cutting chat & mobile index: `docs/MOBILE_PLATFORM_DOCUMENTATION.md`, `frontend/docs/KLAVIYO_WHATSAPP_MARKETING_OPT_IN.md`, `docs/SENDBIRD_INTEGRATION.md`, `docs/MY_CHATS_COMPREHENSIVE_DOCUMENTATION.md`, `docs/PROPERTY_GROUP_CHAT_CS_GUIDE.md`, `docs/IOS_SETTINGS_FIX.md`, `docs/frontend/PUSH_NOTIFICATIONS.md`, `docs/frontend/PUSH_NOTIFICATIONS_ARCHITECTURE.md`.
 - **Infrastructure & Support**: `backend/docker/README.md`, `ENV_SETUP_GUIDE.md`, `HOSTED_CHECKOUT_IMPLEMENTATION.md` (paths relative to whichever repo owns each file).
 
 This document summarizes the shared mental model for both teams—use it as the landing point before diving into domain-specific docs.
