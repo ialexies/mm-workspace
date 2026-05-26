@@ -20,6 +20,7 @@
 | 11 | ChatChannelList – call `ensure-membership` on load (fixes existing channels with wrong names) | ✅ Done |
 | 12 | Sendbird supergroup migration (create with `is_super: true`, in-place upgrade for existing groups) | ✅ Done |
 | 13 | Integration tests | ⬜ Pending |
+| 14 | Property group admin HTTP CRUD, `PROPERTY_GROUP_CHAT_OPS_EMAILS`, lock `POST /chat/property-groups/sync` to ops | ✅ Done — see `backend/docs/PROPERTY_GROUP_CHAT_ADMINS.md` |
 
 ---
 
@@ -123,13 +124,14 @@ All support up to 100 users per request. Default invitation behavior joins users
 
 - Tables: `property_group_chat_admins`, `property_group_chat_admin_properties` (migration `0022_property_group_chat_admins.sql`, journal entry required).
 - Sync reads admins via `loadPropertyGroupChatAdmins()` from Postgres (`scope`: global vs scoped by property).
-- Ops scripts: `seed-property-group-chat-admins.ts`, `sync-property-group-admins-from-sheet.ts`; doc: `backend/docs/PROPERTY_GROUP_CHAT_ADMINS.md`.
+- Ops: authenticated **HTTP API** for admin CRUD (`/chat/property-group-admins`, see `backend/src/routes/property-group-chat-admins.ts`) plus **`PROPERTY_GROUP_CHAT_OPS_EMAILS`** allowlist; doc: `backend/docs/PROPERTY_GROUP_CHAT_ADMINS.md`.
 
 The older optional sketch (`property_group_channels` / `property_group_memberships`) was **not** implemented; Sendbird remains source for channel membership, Postgres for admin allowlists.
 
-**4. API Endpoints** (`backend/src/routes/chat.ts`)
+**4. API Endpoints** (`backend/src/routes/chat.ts`, `backend/src/routes/property-group-chat-admins.ts`)
 
-- `POST /chat/property-groups/sync` – manual trigger (admin or internal use); also updates wrong channel names. Optional **`propertyId`** (query or JSON body) limits work to **one** property channel and skips Pass 2 orphan cleanup; optional **`upsertUsers=true`** to run Sendbird user upserts during that pass.
+- **`GET|POST /chat/property-group-admins`**, **`GET|PATCH /chat/property-group-admins/{id}`** – manage Postgres admin rows (Firebase JWT + **`PROPERTY_GROUP_CHAT_OPS_EMAILS`**).
+- `POST /chat/property-groups/sync` – manual trigger for **operations staff** (JWT email must be in **`PROPERTY_GROUP_CHAT_OPS_EMAILS`**); updates membership from Postgres + bookings. Optional **`propertyId`** (query or JSON body) limits work to **one** property channel and skips Pass 2 orphan cleanup; optional **`upsertUsers=true`** to run Sendbird user upserts during that pass.
 - `POST /chat/property-groups/ensure-membership` – ensure current user's membership and fix wrong channel names (call after booking, and on my-chats load)
 - `GET /chat/property-groups` – list user's property group channels (for UI context if needed)
 
