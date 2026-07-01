@@ -35,16 +35,17 @@ The most urgent finding is a duplicate `purchase` event that causes Google Ads t
 | C5 | Dead `calendar_booking_search_submit` | ✅ Resolved | `purchase` is the working key event; dead event removed |
 | H1 | SPA `page_view` | 🟡 + ⚙️ | Code committed; GTM tag **published**; GA4 EM history-changes off; verified on staging. Pending prod deploy. See `frontend/docs/analytics/SPA_PAGE_VIEW_H1.md` |
 | H2 | `add_to_cart` over-fires | 🟡 | Tours reworked to fire once on tour-add; rooms verified correct. Pending prod deploy |
-| H3 | `begin_checkout` 2–3× | ✅ Live | `markCheckoutEventOnce` dedup |
+| H3 | `begin_checkout` 2–3× | ✅ Live | `markCheckoutEventOnce` dedup — verified on staging: rooms checkout emits exactly **1** `begin_checkout` (0 on page load, 1 on CONFIRM & PAY). All 3 sources share the same dedup key |
 | H4 | `view_item` empty prices | 🟡 | Real starting price sent. Pending prod deploy |
 | H5 | `app_page_location` not registered | ⬜ | GA4 custom dimension |
 | H6 | `original_value` text not metric | ⏭️ | Deferred (off-goal; needs archiving a live dimension) |
 | H7 | Swapped iOS/Android labels | ⬜ | Ads UI |
-| M1 | Email as `user_id` (PII) | ⬜ | Code — highest-priority remaining |
+| M1 | Email as `user_id` (PII) | 🟡 | Code fixed — all auth paths now send Firebase UID; verified on staging (`login` emits UID). Pending prod deploy |
 | M2 | Clarity without consent | ⬜ | Code |
 | M3 | GTM consent UK-only | ⬜ | GTM |
 | M4 | Ad pixels without consent | ⬜ | GTM (the "32 tags not configured for consent" warning) |
-| L1–L6 | Technical debt | ⬜ | Not started |
+| L4 | `sign_up` missing for OAuth new users | 🟡 | Code fixed — Google/Apple OAuth paths now fire `sign_up` (UID only) when `getAdditionalUserInfo().isNewUser`. Pending prod deploy |
+| L1–L3, L5–L6 | Technical debt | ⬜ | Not started |
 
 **New work this sprint (beyond the original 23):**
 - **Paid-ad attribution loop** — site-wide durable capture of `gclid`/`fbclid`/`ttclid`/UTMs → checkout metadata (Stripe) → `purchase` event identity. 🟡 in branch, verified on staging.
