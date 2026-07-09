@@ -7,7 +7,7 @@
 - **API Contract**: OpenAPI schema served from `backend/src/openapi` and consumed by the frontend code generator (`npm run gen:api`) to keep the stack type-safe.
 - **WordPress (`mmk-wp/`)**: WordPress codebase included as a **Git submodule** in this umbrella repo for CMS and legacy/marketing workflows. Details live with that subtree’s README and conventions; it does not ship the Next.js traveller app bundle.
 - **Infrastructure**: Dockerized services for local development (Postgres, MongoDB, RabbitMQ, Redis). Deployments typically run the frontend on Vercel (or coupled DigitalOcean app) and the backend on DigitalOcean with managed databases and queues.
-- **This repo’s `docs/` folder**: Holds cross-cutting narratives (mobile index, Sendbird, property chat plans) tracked at the umbrella level; **`frontend/docs/`** and **`backend/docs/`** remain the exhaustive per-package notebooks.
+- **This repo’s `docs/` folder**: Holds cross-cutting narratives (mobile index, Sendbird, property chat plans, [tour deposit](./docs/TOUR_DEPOSIT.md)) tracked at the umbrella level; **`frontend/docs/`** and **`backend/docs/`** remain the exhaustive per-package notebooks.
 
 ### Backend Architecture (`backend/`)
 
@@ -22,7 +22,7 @@
   - S3-compatible storage manages media uploads, with pre-signed URL flows documented in `MEDIA_SERVICE_DOCS.md`.
 - **Integrations & Flows**
   - **Authentication**: Firebase Admin validates JWT bearer tokens; legacy WordPress users migrate through `/auth/check-legacy-user` flows detailed in `AUTH_FLOW.MD`.
-  - **Bookings**: Stripe payment intents drive checkout. Webhooks from Stripe, Cloudbeds, and Rezdy funnel through RabbitMQ, updating Mongo caches and triggering downstream actions (`ORDER_FLOW.md`, `ROOM_FLOW.md`).
+  - **Bookings**: Stripe payment intents drive checkout. Tour deposits: optional `payment_plan=deposit` with partial Rezdy payment (see `backend/docs/TOUR_DEPOSIT.md`). Webhooks from Stripe, Cloudbeds, and Rezdy funnel through RabbitMQ, updating Mongo caches and triggering downstream actions (`ORDER_FLOW.md`, `ROOM_FLOW.md`).
   - **Events**: RabbitMQ event bus (`EVENTBUS_RECOVERY_GUIDE.md`) ensures reliable processing with dead-letter handling and recovery scripts (`scripts/`).
   - **Automation**: n8n workflows consume event bus messages for email, CRM, and marketing automation (`N8N_NOTIFICATION_SERVICE.md`).
   - **Marketing / Klaviyo**: Firebase-authenticated `POST /marketing/whatsapp-consent` resolves the traveller in Postgres and subscribes WhatsApp marketing on the Klaviyo profile (`backend/src/routes/marketing.ts`, `KlaviyoProfilesClient`). Intended trigger on native: first authorised location fix after the user accepts bundled geofence + WhatsApp disclosure—see `frontend/docs/KLAVIYO_WHATSAPP_MARKETING_OPT_IN.md`.
@@ -67,7 +67,7 @@
   - Frontend rendering engines consume these via generated models, mapping into UI components (cards, listings, detail pages).
 - **Monitoring & Analytics**
   - Sentry spans both layers, correlating errors across frontend SSR/API routes and backend services.
-  - GTM dataLayer events capture navigation, auth, and booking milestones, enriched with platform metadata from device detection utilities.
+  - GTM dataLayer events capture navigation, auth, and booking milestones, enriched with platform metadata from device detection utilities. Canonical docs: `docs/analytics/` — [implementation](docs/analytics/GA4-GTM-IMPLEMENTATION.md), [roadmap & weekly reporting](docs/analytics/GA4-GTM-ROADMAP-AND-REPORTING.md), [May 2026 audit](GA4-GTM-AUDIT-REPORT.md).
   - RabbitMQ metrics, queue depths, and webhook audit collections provide operator visibility; `CURRENCY_CONVERSION_LOGGING.md` and related docs cover specialized monitoring flows.
 
 ### Development & Operations
@@ -89,6 +89,7 @@
 - **Backend**: `backend/README.md`, `backend/docs/MAD_MONKEY_BACKEND_ARCHITECTURE.md`, `AUTH_FLOW.MD`, `ORDER_FLOW.md`, `ROOM_FLOW.md`.
 - **Frontend**: `frontend/README.md`, `frontend/docs/APP_STATE_AUTH_MIGRATION.md`, `frontend/docs/kubernetes-deployment.md`, `frontend/utils/gtmTracker.ts`; Android Gradle / StatusBar / splash guides under `frontend/docs/ANDROID_*`.
 - **Umbrella (this repo)** / cross-cutting chat & mobile index: `docs/MOBILE_PLATFORM_DOCUMENTATION.md`, `frontend/docs/KLAVIYO_WHATSAPP_MARKETING_OPT_IN.md`, `docs/SENDBIRD_INTEGRATION.md`, `docs/MY_CHATS_COMPREHENSIVE_DOCUMENTATION.md`, `docs/PROPERTY_GROUP_CHAT_CS_GUIDE.md`, `docs/IOS_SETTINGS_FIX.md`, `docs/frontend/PUSH_NOTIFICATIONS.md`, `docs/frontend/PUSH_NOTIFICATIONS_ARCHITECTURE.md`.
+- **Analytics (GA4, GTM, Google Ads):** `docs/analytics/GA4-GTM-COMPLETE-REFERENCE.md` (single-file bundle for LLM), `docs/analytics/README.md` (index), `docs/analytics/GA4-GTM-IMPLEMENTATION.md`, `docs/analytics/GA4-GTM-ROADMAP-AND-REPORTING.md`, `GA4-GTM-AUDIT-REPORT.md`, `docs/analytics/PULL_REQUEST_ANALYTICS.md`.
 - **Infrastructure & Support**: `backend/docker/README.md`, `ENV_SETUP_GUIDE.md`, `HOSTED_CHECKOUT_IMPLEMENTATION.md` (paths relative to whichever repo owns each file).
 
 This document summarizes the shared mental model for both teams—use it as the landing point before diving into domain-specific docs.
