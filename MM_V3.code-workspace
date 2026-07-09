@@ -11,13 +11,16 @@
     {
       "name": "Backend",
       "path": "./backend"
-    },
-    {
-      "name": "MMK-WP",
-      "path": "./mmk-wp"
     }
   ],
   "settings": {
+    "git.enabled": true,
+    "git.autoRepositoryDetection": true,
+    "git.scanRepositories": [
+      ".",
+      "./frontend",
+      "./backend"
+    ],
     "files.watcherExclude": {
       "**/node_modules/**": true,
       "**/.next/**": true,

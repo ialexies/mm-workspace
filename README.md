@@ -8,7 +8,9 @@ This folder is an **umbrella workspace** used in Cursor / VS Code. Application c
 | -------- | ------- |
 | [LOCAL_WORKSPACE.md](./LOCAL_WORKSPACE.md) | How this multi-root workspace is laid out and which files are umbrella-only |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | End-to-end stack overview (Next.js app, Bun/Hono API, integrations) |
-| [docs/TOUR_DEPOSIT.md](./docs/TOUR_DEPOSIT.md) | Tour $100 deposit feature + staging port-forward for local dev |
+| [docs/TOUR_DEPOSIT.md](./docs/TOUR_DEPOSIT.md) | Tour deposit index (amounts, deploy, port-forward) |
+| [backend/docs/TOUR_DEPOSIT.md](./backend/docs/TOUR_DEPOSIT.md) | Tour deposit API, Rezdy, env, rollout |
+| [frontend/docs/TOUR_DEPOSIT.md](./frontend/docs/TOUR_DEPOSIT.md) | Tour deposit checkout UI & QA |
 | [docs/MOBILE_PLATFORM_DOCUMENTATION.md](./docs/MOBILE_PLATFORM_DOCUMENTATION.md) | Index of mobile-specific docs (Android, iOS, chat, Klaviyo/geofence) |
 | [frontend/docs/KLAVIYO_WHATSAPP_MARKETING_OPT_IN.md](./frontend/docs/KLAVIYO_WHATSAPP_MARKETING_OPT_IN.md) | Native geofence disclosure + automatic Klaviyo WhatsApp marketing subscribe (`POST /marketing/whatsapp-consent`) |
 | [TODO.md](./TODO.md) | Ad-hoc task list for this umbrella repo |

@@ -1,6 +1,9 @@
 ---
 description: Bun + Hono API — routes, OpenAPI, Drizzle, Firebase verification
-globs: backend/**/*
+globs:
+  - backend/**/*
+  - src/**/*
+  - drizzle/**/*
 alwaysApply: false
 ---
 

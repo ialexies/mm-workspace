@@ -29,31 +29,36 @@ The most urgent finding is a duplicate `purchase` event that causes Google Ads t
 | # | Issue | Status | Notes |
 |---|---|---|---|
 | C1 | Duplicate `purchase` | ✅ Live | `payment.tsx` no longer fires it |
-| C2 | Mid-funnel goals 0 actions | ⛔ Blocked | `add_to_cart`/`begin_checkout` are GA4 key events; only the **app** versions imported. Need the **web** property `G-K27E7XLRBP` conversion import enabled on the GA4↔Ads link (Data Manager → Manage) — no self-serve access |
+| C2 | Mid-funnel goals 0 actions | ⛔ Blocked | `add_to_cart`/`begin_checkout` are GA4 key events; only the **app** versions imported. Need the **web** property `G-K27E7XLRBP` conversion import enabled on the GA4↔Ads link (Data Manager → Manage) — no self-serve access. *(Your side — Ads)* |
 | C3 | `purchase` not key event | ✅ Live | Confirmed key event in GA4 |
 | C4 | Dead UA/popup Primary | ✅ Live | Removed in Ads UI |
-| C5 | Dead `calendar_booking_search_submit` | ✅ Resolved | `purchase` is the working key event; dead event removed |
-| H1 | SPA `page_view` | 🟡 + ⚙️ | Code committed; GTM tag **published**; GA4 EM history-changes off; verified on staging. Pending prod deploy. See `frontend/docs/analytics/SPA_PAGE_VIEW_H1.md` |
-| H2 | `add_to_cart` over-fires | 🟡 | Tours reworked to fire once on tour-add; rooms verified correct. Pending prod deploy |
-| H3 | `begin_checkout` 2–3× | ✅ Live | `markCheckoutEventOnce` dedup — verified on staging: rooms checkout emits exactly **1** `begin_checkout` (0 on page load, 1 on CONFIRM & PAY). All 3 sources share the same dedup key |
-| H4 | `view_item` empty prices | 🟡 | Real starting price sent. Pending prod deploy |
-| H5 | `app_page_location` not registered | ⬜ | GA4 custom dimension |
-| H6 | `original_value` text not metric | ⏭️ | Deferred (off-goal; needs archiving a live dimension) |
-| H7 | Swapped iOS/Android labels | ⬜ | Ads UI |
-| M1 | Email as `user_id` (PII) | 🟡 | Code fixed — all auth paths now send Firebase UID; verified on staging (`login` emits UID). Pending prod deploy |
-| M2 | Clarity without consent | ⬜ | Code |
-| M3 | GTM consent UK-only | ⬜ | GTM |
-| M4 | Ad pixels without consent | ⬜ | GTM (the "32 tags not configured for consent" warning) |
-| L4 | `sign_up` missing for OAuth new users | 🟡 | Code fixed — Google/Apple OAuth paths now fire `sign_up` (UID only) when `getAdditionalUserInfo().isNewUser`. Pending prod deploy |
-| L1–L3, L5–L6 | Technical debt | ⬜ | Not started |
+| C5 | Dead `calendar_booking_search_submit` | ✅ Resolved | Confirmed by team (fixed last week). `purchase` is the working key event; the dead starred event was removed |
+| H1 | SPA `page_view` | ✅ Merged | Code in `new-v3-staging` + GTM tag **published** + GA4 EM history-changes off; verified on staging. Pending prod deploy. See `frontend/docs/analytics/SPA_PAGE_VIEW_H1.md` |
+| H2 | `add_to_cart` over-fires | ✅ Merged | Tours fire once on tour-add (qty = guests); rooms verified correct. In `new-v3-staging`; pending prod deploy |
+| H3 | `begin_checkout` 2–3× | ✅ Live | `markCheckoutEventOnce` dedup — verified on staging: exactly **1** `begin_checkout` per checkout. All 3 sources share the dedup key |
+| H4 | `view_item` empty prices | ✅ Merged | Real starting price sent. In `new-v3-staging`; pending prod deploy |
+| H5 | `app_page_location` not registered | ✅ | GA4 custom dimension registered (Event scope) + GTM `app_page_location` param wired & published. App emission verified on-device. Populates from registration onward |
+| H6 | `original_value` text not metric | ✅ | Registered as a custom **metric** (Event scope, Currency) on the prod property. Live purchase hit verified numeric (`epn.original_value`). Verifier: `verify-original-value.mjs` |
+| H7 | Swapped iOS/Android labels | ⬜ | *Your side — Ads UI* |
+| M1 | Email as `user_id` (PII) | ✅ Merged | All auth paths send Firebase UID; verified on staging. In `new-v3-staging`; pending prod deploy |
+| M2 | Clarity without consent | ✅ Merged | Gated behind `Cookiebot.consent.statistics`; before/after verified on localhost. In `new-v3-staging`; pending prod deploy. Grant-path to confirm on staging |
+| M3 | GTM consent UK-only | ✅ | Fixed by team (last week) — consent defaults extended beyond UK to the EEA. Not independently re-verified |
+| M4 | Ad pixels without consent | ❌ Not fixed | **Live staging check (2026-07-03) — with consent DENIED, these still fired: TikTok (22), Bing/UET (8), Meta (5), Reddit (2), Tapfiliate (1).** Container audit: 13 non-Google pixel tags have `consentStatus: NOT_SET`; only `Reddit - All Pages` is gated (= the template). Runbook ready. *Your side — GTM UI.* Verifier: `playwright-verify/verify-adpixel-consent-staging.mjs` |
+| L1 | Hardcoded GTM/Clarity IDs | ✅ Merged | → `NEXT_PUBLIC_GTM_ID` / `NEXT_PUBLIC_CLARITY_ID` (fallback to current). In `new-v3-staging` |
+| L2 | Prod debug code shipped | ✅ Merged | GTM debug + `testGTM` + Cookiebot monitor guarded behind `NODE_ENV`; stray render log removed. In `new-v3-staging` (PR #961); pending prod deploy |
+| L3 | TikTok twin doubles events | ⬜ | Code — `gtmTracker.ts` pushes a TikTok twin for every event |
+| L4 | `sign_up` missing for OAuth new users | ✅ Merged | Google/Apple OAuth fire `sign_up` (UID) when `getAdditionalUserInfo().isNewUser`. In `new-v3-staging`; pending prod deploy |
+| L5 | Untyped analytics globals | ✅ Merged | `ttq`/`Cookiebot`/`clarity`/etc. typed in `global.d.ts`; removed `(window as any)`. In `new-v3-staging` |
+| L6 | 36 legacy Ads conversion actions | ⬜ | *Your side — Ads UI* (archive) |
 
 **New work this sprint (beyond the original 23):**
-- **Paid-ad attribution loop** — site-wide durable capture of `gclid`/`fbclid`/`ttclid`/UTMs → checkout metadata (Stripe) → `purchase` event identity. 🟡 in branch, verified on staging.
+- **`/booking/thanks` white-screen crash → lost purchase conversions** — ✅ Merged to `new-v3-staging`. The confirmation page branched on `router.query.type` vs the loaded `summary.type`; a mismatch/empty summary threw (`tours[0]`/`.map` on undefined), unmounting the page so the `purchase` event never fired (confirmed in prod Sentry `APP-V3-1VC`). Fixed by branching on `summary.type` + hardening array access. Before/after verified on localhost (old code crashed + lost purchase; new fires). Pending prod deploy.
+- **Paid-ad attribution loop** — site-wide durable capture of `gclid`/`fbclid`/`ttclid`/UTMs → checkout metadata (Stripe) → `purchase` event identity. ✅ Merged to `new-v3-staging`, verified on staging. Pending prod deploy.
 - **Self-referral fix** — GA4 Unwanted referrals (✅ live, both web streams) + Conversion Linker `linkerDomains` cleaned (⚙️ published 2026-07-01).
 - **Enhanced Conversions foundation** — `customer_email`/`customer_phone` on `purchase`, GTM DLVs + `UPD - Enhanced Conversions` (⚙️ published). Ads-UI activation pending — see `frontend/docs/analytics/ENHANCED_CONVERSIONS_FOLLOWUP.md`.
 - **Funnel-hygiene test suite** — `playwright-verify/` (attribution, view_item, add_to_cart tours/rooms, SPA page_view) with HTML report + video.
 
-**Separate issue found (not in the 23):** tours `/booking/thanks` `hasSummary:false` — `purchase` doesn't fire on the tours embedded-checkout path; under-counts tours conversions. Needs its own ticket.
+**Separate issue investigated (not in the 23):** tours `/booking/thanks` `hasSummary:false` — suspected `purchase` not firing on the tours embedded-checkout path. **✅ Verified NOT a bug (2026-07-01).** A real paid tours booking on staging (Stripe test card) fired `purchase` exactly once (value 32.44 USD, `item_category: Tour`, `item_name: Valencia Tour`, `transaction_id` = cart id). The `hasSummary:false` log fires only on the initial renders before `fetchCartConfirmation` resolves, then summary loads and purchase fires. The path is symmetric with rooms end-to-end. Verifier: `playwright-verify/verify-tours-purchase.mjs`. No ticket needed.
 
 ---
 

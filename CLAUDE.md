@@ -1,0 +1,187 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Workspace Layout
+
+This is an **umbrella repo** — the umbrella root holds shared docs, Cursor config, and cross-cutting narratives. Application code lives in two separate Git repos cloned as subdirectories:
+
+| Folder | Repo | Stack |
+|--------|------|-------|
+| `frontend/` | Mad Monkey Web App V3 | Next.js, MUI, Capacitor |
+| `backend/` | Mad Monkey Backend | Bun, Hono, Drizzle, PostgreSQL |
+| `mmk-wp/` | WordPress submodule (optional) | PHP / WP — not part of the Next.js bundle |
+
+`frontend/` and `backend/` are **excluded from the umbrella `.gitignore`** — they are separate repos. Do not introduce shared NPM packages or imports between them. Duplicate small helpers per package if needed.
+
+## Commands
+
+### Backend (`backend/`)
+
+```bash
+bun install
+bun run dev                         # hot-reload dev server on :3000
+npm run docker:services             # start Postgres, MongoDB, RabbitMQ, Redis
+npm run migrate                     # Drizzle migrations
+npm run migrate:local               # migrate with local Docker Postgres
+npm run generate                    # generate new Drizzle migration
+bunx drizzle-kit studio             # Drizzle Studio GUI
+npm run docker:db                   # psql shell into local Postgres
+npm run docker:mongo                # mongosh into local MongoDB
+npm run test                        # all tests
+npm run test:unit                   # unit tests only
+npm run test:integration            # integration tests only
+npm run test:contract               # OpenAPI contract test
+bun test <path/to/test.ts>          # single test file
+npm run typecheck                   # TypeScript check (no emit)
+npm run lint                        # ESLint
+npm run lint:fix
+npm run export:openapi              # export OpenAPI JSON to disk
+npm run verify:openapi              # verify Hono routes vs OpenAPI spec
+npm run eventbus:recover            # recover RabbitMQ message backlog
+npm run eventbus:status             # check event bus queue health
+```
+
+API docs: Swagger UI at `http://localhost:3000/docs`, OpenAPI JSON at `/openapi.json`.
+
+### Frontend (`frontend/`)
+
+```bash
+npm install
+npm run dev                         # Next dev server on :3000 (0.0.0.0)
+npm run build
+npm run lint
+npm run type-check                  # tsc --noEmit
+npm run format                      # prettier
+npm run gen:api                     # regenerate v3/api from OpenAPI spec (see below)
+npm run android                     # cap sync + open Android Studio
+npm run ios                         # cap sync + open Xcode
+npm run sync:android                # use Android-specific capacitor.config
+npm run sync:ios                    # use iOS-specific capacitor.config
+```
+
+### Regenerating the API client
+
+```bash
+# from frontend/ — backend must be running on :3000 (or target another URL)
+npm run gen:api -- --url http://localhost:3000/openapi.json --out v3/api --client fetch --clean
+```
+
+**Never hand-edit `frontend/v3/api/`** — it is fully generated. The backend owns OpenAPI shapes; regenerate after any backend contract change.
+
+## Architecture
+
+### Type-Safe API Contract
+
+The backend exposes an OpenAPI spec via `@hono/zod-openapi`. The frontend consumes it through a generated TypeScript client (`frontend/v3/api/`). This is the single source of truth for cross-stack types — use the generated services for API calls rather than ad-hoc fetch wrappers.
+
+### Authentication Flow
+
+1. Client authenticates via **Firebase Auth** (web or Capacitor native).
+2. Firebase ID token is sent as `Authorization: Bearer <JWT>` on every API request.
+3. Backend middleware (`src/middleware/validateAuthWithFirebase.ts`) verifies the JWT via **Firebase Admin** and enriches the request context with the customer profile.
+4. Legacy WordPress users migrate through `/auth/check-legacy-user`.
+
+**Supabase clarification**: Some old docs mention Supabase alongside Firebase. In this codebase, `@supabase/supabase-js` is not used for traveller CRUD. If Postgres is hosted on Supabase, treat it as the PostgreSQL host only — use Drizzle + Hono for all persistence.
+
+### Backend Internal Architecture
+
+```
+src/index.ts              → Hono app entrypoint; all routes mounted here
+src/routes/               → One file per domain (cart, bookings, destinations, tours, auth, …)
+src/openapi/schemas.ts    → Shared Zod schemas exported to OpenAPI
+src/middleware/           → Auth (Firebase JWT), error handler, IP whitelist
+src/services/             → Business logic (CartService, CheckoutService, Stripe, Cloudbeds, Rezdy, …)
+src/db/                   → Drizzle client (db.ts) and schema (schema.ts)
+src/utils/                → Cross-cutting helpers (Firebase Admin, error reporting, currency)
+src/events/               → RabbitMQ event schemas
+drizzle/                  → SQL migration files (generated by drizzle-kit)
+```
+
+**Event-driven flows**: Stripe, Cloudbeds, and Rezdy webhooks arrive at `src/routes/webhooks/`, get validated, and emit to the **RabbitMQ event bus** (`EventBus.ts`). Consumers update Mongo caches and trigger n8n notifications. Use `npm run eventbus:recover` if queues get stuck.
+
+**MongoDB**: Caches and mirrors upstream data (Cloudbeds reservations, Rezdy tours, Stripe transactions). Do not use it as the canonical store for new entities — PostgreSQL via Drizzle is the primary relational store.
+
+### Frontend Internal Architecture
+
+```
+pages/                    → Next.js Pages Router (routes map directly to files)
+pages/api/                → Next.js API routes (Klaviyo proxies, checkout helpers, webhooks to WooCommerce)
+components/               → UI components (atoms → molecules → pages)
+contexts/                 → React contexts: auth, cart, chat, currency, customer
+hooks/                    → Reusable hooks (useDeepLinkListener, usePushNotifications, useTourBooking, …)
+services/                 → API call wrappers and client-side caching
+v3/api/                   → Generated OpenAPI client (do not hand-edit)
+utils/                    → GTM tracker, Sentry logger, device detection, formatters
+theme/                    → MUI theme definition
+android/ ios/             → Capacitor native project dirs
+```
+
+**State management**: Contexts in `contexts/` (auth, cart, chat, currency, customer) plus Redux Toolkit slices for global booking/auth/cart flows (referenced via `@/store/*` path alias). Prefer existing slices before adding new global state.
+
+**Path alias**: `@/*` maps to `frontend/*` (see `tsconfig.json`). Always use this alias for internal imports.
+
+### Mobile (Capacitor)
+
+The Next.js app is wrapped in Capacitor shells for iOS and Android. Platform-specific capacitor configs:
+- `capacitor.config.ts` (default / web)
+- `capacitor.config.ios.ts` → `npm run sync:ios`
+- `capacitor.config.android.ts` → `npm run sync:android`
+
+Native features (push notifications, geolocation, deep links) live in `hooks/` and `plugins/` — follow existing native/web conditional patterns before adding new Capacitor plugin usage.
+
+### Local Frontend → Staging Backend (Port-Forward)
+
+When you need the real staging API for features like tour deposit checkout:
+
+```powershell
+kubectl port-forward -n staging svc/backend 18080:80
+```
+
+```env
+# frontend/.env.local
+NEXT_PUBLIC_V3_API_BASE=http://127.0.0.1:18080/
+```
+
+Then restart `npm run dev`. The public staging hostname (`staging-backend.madmonkeyhostels.com`) may route to a different pod than the K8s service — use port-forward for deposit checkout and other staging-specific features.
+
+## Key Conventions
+
+### Frontend
+
+- **No `any` types** — use proper TypeScript types, interfaces, or generics.
+- **MUI theme only** — use `useTheme()` from `@mui/material/styles/useTheme` for colors, typography, spacing, and breakpoints. Do not hardcode values.
+- **Error logging** — use `logError()` from `@/utils/logger` in all `catch` blocks. Include `section`, `action`, and relevant IDs. Reference `docs/SENTRY_ERROR_LOGGING_ROADMAP.md`.
+- **Sitemap** — when navigation links (header, dropdowns, footer) change, update `public/sitemap.xml`.
+- **Do not edit `.eslintrc.js`**.
+
+### Backend
+
+- New routes go in `src/routes/` with Zod-typed request/response schemas exported to OpenAPI via `@hono/zod-openapi`.
+- Extend existing auth helpers in `src/middleware/validateAuthWithFirebase.ts` rather than ad-hoc JWT parsing.
+- For new persistence, follow Drizzle patterns in `src/db/schema.ts` and add migrations with `npm run generate`.
+- Follow neighbouring patterns in `src/services/` before adding new integration styles.
+
+### Cross-Stack
+
+- Backend is the source of truth for API shapes. After changing a backend route, regenerate the frontend client.
+- No cross-package imports between `frontend/` and `backend/`.
+- `mmk-wp/` is a separate PHP/WordPress codebase — do not apply Next.js or Hono conventions there.
+
+## Key Documentation
+
+| Doc | Location |
+|-----|----------|
+| Architecture overview | `ARCHITECTURE.md` |
+| Local workspace setup | `LOCAL_WORKSPACE.md` |
+| Tour deposit ($100 USD) | `docs/TOUR_DEPOSIT.md` → `backend/docs/TOUR_DEPOSIT.md` + `frontend/docs/TOUR_DEPOSIT.md` |
+| Auth flow | `backend/AUTH_FLOW.MD` |
+| Booking / checkout flow | `backend/docs/CHECKOUT_AND_BOOKING_FLOW.md` |
+| Deployment | `backend/docs/DEPLOYMENT_GUIDE.md`, `backend/DEPLOY.md` |
+| Event bus recovery | `backend/docs/EVENTBUS_RECOVERY_GUIDE.md` |
+| Mobile platform index | `docs/MOBILE_PLATFORM_DOCUMENTATION.md` |
+| Klaviyo WhatsApp opt-in | `frontend/docs/KLAVIYO_WHATSAPP_MARKETING_OPT_IN.md` |
+| Analytics (GA4 / GTM) | `docs/analytics/GA4-GTM-COMPLETE-REFERENCE.md` |
+| Sendbird chat | `docs/SENDBIRD_INTEGRATION.md` |
+| Backend env variables | `backend/.env.example` |
+| Frontend env variables | `frontend/.env.production.example` |

@@ -1,6 +1,17 @@
 ---
 description: Next.js traveller app — routing, state, aliases, Capacitor, API client
-globs: frontend/**/*
+globs:
+  - frontend/**/*
+  - pages/**/*
+  - components/**/*
+  - store/**/*
+  - services/**/*
+  - utils/**/*
+  - hooks/**/*
+  - theme/**/*
+  - v3/**/*
+  - android/**/*
+  - ios/**/*
 alwaysApply: false
 ---
 

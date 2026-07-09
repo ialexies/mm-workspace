@@ -4,16 +4,28 @@ This directory is **not** the full application tree in Git: it is a **wrapper** 
 
 ## Multi-root Cursor / VS Code workspace
 
-[`MM_V3.code-workspace`](./MM_V3.code-workspace) opens four folders as one workspace:
+[`MM_V3.code-workspace`](./MM_V3.code-workspace) opens three folders as one workspace:
 
 | Folder (path) | Role |
 | --------------- | ---- |
-| **Root** `.` | Umbrella repo: docs, Cursor config, submodule pointer for `mmk-wp/` |
+| **Root** `.` | Umbrella repo: docs, Cursor config |
 | **Frontend** `./frontend` | Next.js application (standalone Git repo when cloned normally) |
 | **Backend** `./backend` | Bun + Hono API (standalone Git repo when cloned normally) |
-| **MMK-WP** `./mmk-wp` | WordPress site codebase ([Git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules)) |
 
 The umbrella `.gitignore` excludes `frontend/` and `backend/` so their files are **not** double-tracked here; clone those repos beside or under this workspace as your team prefers.
+
+### Optional: WordPress (`mmk-wp/`)
+
+The WordPress subtree is a **Git submodule** when your team tracks it. It is **not** in the default workspace until the folder exists locally (avoids a missing-folder warning on open).
+
+After `git submodule update --init mmk-wp` (or your team’s clone steps), add it back to `MM_V3.code-workspace`:
+
+```json
+{
+  "name": "MMK-WP",
+  "path": "./mmk-wp"
+}
+```
 
 ### Optional sibling folders
 
@@ -27,6 +39,16 @@ You may see other directories on disk (for example tooling or experiments). If t
 - `MM_V3.code-workspace` – Workspace definition  
 
 This file [`LOCAL_WORKSPACE.md`](./LOCAL_WORKSPACE.md), [`README.md`](./README.md), and [`ARCHITECTURE.md`](./ARCHITECTURE.md) live at the umbrella root.
+
+### Source Control shows “No source control providers registered”
+
+This is a [known Cursor issue](https://forum.cursor.com/t/git-source-control-not-detected-in-multi-root-code-workspace/158147) with multi-root `.code-workspace` files: the Git extension can finish its scan before workspace folders are ready.
+
+`MM_V3.code-workspace` already sets `git.scanRepositories` for Root, Frontend, and Backend. If SCM is still empty:
+
+1. **Fully quit Cursor** (not just Reload Window) and reopen via **File → Open Workspace from File** → `MM_V3.code-workspace`.
+2. Confirm the built-in **Git** extension is enabled (Extensions → search “Git” → built-in by Microsoft).
+3. If it persists, reset cached workspace state: close Cursor, back up and delete `state.vscdb` under `%APPDATA%\Cursor\User\workspaceStorage\<hash-for-this-workspace>\` (see [forum workaround](https://forum.cursor.com/t/no-source-control-providers-registered-after-restart-resolved-by-deleting-workspacestorage/158919)). This does not touch your repos or commits.
 
 ## Repo-specific ignore rules
 
@@ -80,4 +102,11 @@ Port-forward hits the **same** backend pods as the staging cluster (e.g. image `
 
 ### Rezdy deposit sanity check
 
-After a successful deposit test, Rezdy should show **Total** = full tour, **Balance** &gt; 0, and paid amount ≈ $100 USD (converted to the product currency, e.g. IDR).
+After a successful deposit test:
+
+1. **Checkout UI (tour-only):** `depositDue + balanceDue = totalAmount` on Price Details (see [`frontend/docs/TOUR_DEPOSIT.md`](./frontend/docs/TOUR_DEPOSIT.md)).
+2. **Rezdy order:** **Total** = full tour, **Balance** &gt; 0, paid amount ≈ $100 USD (converted to product currency, e.g. IDR).
+
+### Deploy backend to staging
+
+From `backend/` (Git Bash/WSL): `./deploy.sh` — see [`backend/docs/TOUR_DEPOSIT.md`](./backend/docs/TOUR_DEPOSIT.md#deploy-backend-to-staging--production).

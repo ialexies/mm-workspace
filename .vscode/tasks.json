@@ -11,28 +11,7 @@
         "panel": "new"
       },
       "problemMatcher": []
-    }
-  ]
-}
-{
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "Launch Chrome Debug",
-      "type": "shell",
-      "command": "& \"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" --remote-debugging-port=9222 --user-data-dir='C:\\tmp\\chrome-debug-profile' http://localhost:3000",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    }
-  ]
-}
-{
-  "version": "2.0.0",
-  "tasks": [
+    },
     {
       "label": "Start Android Device",
       "type": "shell",
@@ -56,8 +35,10 @@
     {
       "label": "Restart Android App",
       "type": "shell",
-      // "command": "npx cap sync android; npx cap run android",
       "command": "npx cap run android",
+      "options": {
+        "cwd": "${workspaceFolder:Frontend}"
+      },
       "presentation": {
         "reveal": "always",
         "panel": "new",
@@ -66,10 +47,13 @@
       },
       "problemMatcher": []
     },
-     {
+    {
       "label": "Hot Reload (Restart Dev Server)",
       "type": "shell",
       "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder:Frontend}"
+      },
       "isBackground": true,
       "problemMatcher": [
         {
@@ -93,6 +77,5 @@
         "panel": "dedicated"
       }
     }
-
   ]
 }

@@ -5,8 +5,8 @@ alwaysApply: true
 
 # MM V3 umbrella workspace
 
-- **Repos in one window**: Cursor opens `frontend/`, `backend/`, and `mmk-wp/` (WordPress subtree, **Git submodule**) together with repo root docs. Paths are sibling folders under the MM root.
-- **`mmk-wp/`**: PHP / WordPress — do **not** apply Next.js or Hono conventions there.
+- **Repos in one window**: Cursor opens `frontend/`, `backend/`, and repo root docs via `MM_V3.code-workspace`. Paths are sibling folders under the MM root.
+- **`mmk-wp/`** (optional **Git submodule**): Add to the workspace file only after the folder exists locally. PHP / WordPress — do **not** apply Next.js or Hono conventions there.
 - **No cross-package code**: Don’t introduce shared NPM packages between `frontend/` and `backend/`, symlinked “common” folders, or imports across those roots. Duplicate small helpers per package if needed.
 - **Codegen**: Backend owns OpenAPI shapes; regenerate the client from `frontend/` with `npm run gen:api`. **Never hand-edit** `frontend/v3/api/` generators’ output beyond what the codegen workflow allows (see `frontend/` scripts).
 - **TypeScript**: Each of `frontend/` and `backend/` has its **own** `tsconfig.json`; **strict mode** applies; Bun runs `backend/`; frontend is Next.js.

@@ -6,11 +6,11 @@
       "name": "Next.js Server (Node)",
       "type": "pwa-node",
       "request": "launch",
-      "cwd": "${workspaceFolder}/frontend",
+      "cwd": "${workspaceFolder:Frontend}",
       "runtimeExecutable": "node",
       "runtimeArgs": [
         "--inspect",
-        "${workspaceFolder}/frontend/node_modules/next/dist/bin/next",
+        "${workspaceFolder:Frontend}/node_modules/next/dist/bin/next",
         "dev"
       ],
       "console": "integratedTerminal",
@@ -20,7 +20,7 @@
       ],
       "sourceMaps": true,
       "resolveSourceMapLocations": [
-        "${workspaceFolder}/frontend/**",
+        "${workspaceFolder:Frontend}/**",
         "!**/node_modules/**",
         "!**/.next/cache/**"
       ],
@@ -38,7 +38,7 @@
       "type": "pwa-chrome",
       "request": "launch",
       "url": "http://localhost:3000",
-      "webRoot": "${workspaceFolder}/frontend",
+      "webRoot": "${workspaceFolder:Frontend}",
       "sourceMaps": true
     },
 
@@ -53,10 +53,10 @@
           "runtimeExecutable": "node",
           "runtimeArgs": [
             "--inspect=9229",
-            "./frontend/node_modules/next/dist/bin/next",
+            "${workspaceFolder:Frontend}/node_modules/next/dist/bin/next",
             "dev"
           ],
-          "cwd": "${workspaceFolder}/frontend",
+          "cwd": "${workspaceFolder:Frontend}",
           "console": "integratedTerminal",
           "env": { "NODE_ENV": "development" },
           "sourceMaps": true,
@@ -67,7 +67,7 @@
       "type": "pwa-chrome",
       "request": "launch",
       "url": "http://localhost:3000",
-      "webRoot": "${workspaceFolder}/frontend",
+      "webRoot": "${workspaceFolder:Frontend}",
       "sourceMaps": true
     },
 
@@ -76,7 +76,7 @@
       "type": "node-terminal",
       "request": "launch",
       "command": "npm run dev",
-      "cwd": "${workspaceFolder}/frontend",
+      "cwd": "${workspaceFolder:Frontend}",
       "sourceMaps": true,
       "env": {
         "NODE_ENV": "development"
@@ -97,7 +97,7 @@
       "type": "node-terminal",
       "request": "launch",
       "command": "npm run dev",
-      "cwd": "${workspaceFolder}/frontend",
+      "cwd": "${workspaceFolder:Frontend}",
       "protocol": "inspector",
       "sourceMaps": true,
       "env": {
@@ -120,7 +120,7 @@
       "type": "node-terminal",
       "request": "launch",
       "command": "npm run dev",
-      "cwd": "${workspaceFolder}/frontend",
+      "cwd": "${workspaceFolder:Frontend}",
       "sourceMaps": true,
       "env": {
         "NODE_ENV": "development"
@@ -143,7 +143,7 @@
       "type": "node-terminal",
       "request": "launch",
       "command": "npm run dev",
-      "cwd": "${workspaceFolder}/frontend",
+      "cwd": "${workspaceFolder:Frontend}",
       "sourceMaps": true,
       "env": {
         "NODE_ENV": "development"
@@ -166,7 +166,7 @@
       "type": "node-terminal",
       "request": "launch",
       "command": "npm run dev",
-      "cwd": "${workspaceFolder}/frontend",
+      "cwd": "${workspaceFolder:Frontend}",
       "serverReadyAction": {
         "pattern": "- Local:.+(https?://.+)",
         "uriFormat": "%s",
@@ -178,7 +178,7 @@
       "type": "node-terminal",
       "request": "launch",
       "command": "npm run dev",
-      "cwd": "${workspaceFolder}/frontend",
+      "cwd": "${workspaceFolder:Frontend}",
       // "protocol": "inspector",
       "autoAttachChildProcesses": true,
       "serverReadyAction": {
@@ -202,7 +202,7 @@
       "type": "node-terminal",
       "request": "launch",
       "command": "npm run dev",
-      "cwd": "${workspaceFolder}/frontend",
+      "cwd": "${workspaceFolder:Frontend}",
       "console": "integratedTerminal",
       "serverReadyAction": {
         "pattern": "started server on .+, url: (https?://.+)",
@@ -215,9 +215,9 @@
       "type": "node-terminal",
       "request": "launch",
       "command": "npx cap sync android; npx cap run android",
-      "cwd": "${workspaceFolder}/frontend",
+      "cwd": "${workspaceFolder:Frontend}",
       // "console": "integratedTerminal",
-      "preLaunchTask": "Start Android Emulator",
+      "preLaunchTask": "Start Android Device",
       "presentation": {
         "reveal": "always",
         "panel": "new",
@@ -248,7 +248,7 @@
       "type": "node-terminal",
       "request": "launch",
       "command": "npx cap sync ios; npx cap run ios",
-      "cwd": "${workspaceFolder}/frontend",
+      "cwd": "${workspaceFolder:Frontend}",
       "console": "integratedTerminal",
       "presentation": {
         "reveal": "always",
@@ -280,7 +280,7 @@
       "type": "node-terminal",
       "request": "launch",
       "command": "npx cap sync android; npx cap open android",
-      "cwd": "${workspaceFolder}/frontend",
+      "cwd": "${workspaceFolder:Frontend}",
       "console": "integratedTerminal",
       "presentation": {
         "reveal": "always",
@@ -313,7 +313,7 @@
       "type": "node-terminal",
       "request": "launch",
       "command": "npx cap sync ios; npx cap open ios",
-      "cwd": "${workspaceFolder}/frontend",
+      "cwd": "${workspaceFolder:Frontend}",
       "console": "integratedTerminal",
       "presentation": {
         "reveal": "always",
@@ -346,12 +346,12 @@
       "type": "pwa-chrome",
       "request": "attach",
       "port": 9222,
-      "webRoot": "${workspaceFolder}/frontend",
+      "webRoot": "${workspaceFolder:Frontend}",
       "preLaunchTask": "Launch Chrome Debug",
       "sourceMapPathOverrides": {
-        "webpack:///./*": "${workspaceFolder}/*",
-        "webpack:///src/*": "${workspaceFolder}/frontend/src/*",
-        "webpack:///*": "${workspaceFolder}/*"
+        "webpack:///./*": "${workspaceFolder:Frontend}/*",
+        "webpack:///src/*": "${workspaceFolder:Frontend}/src/*",
+        "webpack:///*": "${workspaceFolder:Frontend}/*"
       }
     }
   ],
