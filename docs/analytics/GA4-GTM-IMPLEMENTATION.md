@@ -349,7 +349,7 @@ All ecommerce events follow this GA4 Enhanced Ecommerce shape:
 ```typescript
 {
   ecommerce: {
-    currency: "USD",            // always USD
+    currency: "USD",            // uppercase ISO 4217 — the customer's actual charge currency (multi-currency site, not fixed to USD)
     value: number,              // total value
     coupon?: string,            // coupon code if applied
     transaction_id?: string,    // purchase events only
@@ -357,7 +357,9 @@ All ecommerce events follow this GA4 Enhanced Ecommerce shape:
       {
         item_id: string,        // property/room/tour ID
         item_name: string,      // display name
-        item_category: string,  // "Accommodation" | "Tours & Experiences"
+        item_category: string,  // "Accommodation" | "Tour"
+        item_category2?: string, // destination country
+        item_category3?: string, // property/hostel name, e.g. "Mad Monkey Dumaguete" — added 2026-07-16
         item_brand?: string,    // property name (tours)
         price: number,
         quantity: number,
@@ -444,21 +446,24 @@ Fires when an item is added to the cart.
 
 | File | When | Notes |
 |---|---|---|
-| `components/molecules/CardRoomComponent.tsx` | Room card "+" click | Item-rich payload |
-| `components/molecules/ToursShoppingCart.tsx` | **On every `adultCount` change** | **Over-fires — known issue §15 H2** |
-| `contexts/cartContext.tsx` | After `addToCart()` API | **Gated by `ENABLE_CART_ANALYTICS=true` (OFF by default)** — minimal payload, no items |
+| `contexts/cartContext.tsx` (`addItemToCart`) | After the cart-add API call succeeds, for every room/tour/addon add site-wide | **Sole source as of 2026-07-16** (fixed — see below). Item-rich payload built from the API response; `item_type` still included for addons since the Cart response carries no addon pricing to build a proper `items[]` from |
+| `components/molecules/ToursShoppingCart.tsx` | **On every `adultCount` change** | **Over-fires — known issue §15 H2** (unrelated to the 2026-07-16 fix below) |
+
+**Fixed 2026-07-16** (`fix/ga4-currency-value-correctness`): this event used to double-fire — the shared `cartContext.tsx` handler pushed a minimal payload (`value` = the **whole cart's running total**, no `items[]`, lowercase `currency`), and `CardRoomComponent.tsx`/the tours flow (`useTourBooking.ts`) each pushed a **second**, richer event right after. Fixed by making the shared handler look up the specific line just added from the API response and build a correct single-item payload (reusing `buildGa4Item` from `utils/ecommerceDataLayer.ts`), then removing the now-redundant component-level pushes. `value` is now always uppercase `currency` and just the item(s) added in *this* event, not the cart total.
 
 ```typescript
 gtmPushEvent("add_to_cart", {
   ecommerce: {
-    currency: "USD",
-    value: room.price * quantity,
+    currency: "USD",             // uppercase — normalized from the cart's raw (lowercase) currency field
+    value: room.price * quantity, // just the item(s) added in this event, not the running cart total
+    item_type: "cloudbeds",       // "cloudbeds" | "rezdy" | "addon"
     items: [
       {
-        item_id: room.propertyId,
-        item_name: room.name,
+        item_id: room.room_id,
+        item_name: room.room_name,
         item_category: "Accommodation",
-        price: room.price,
+        item_variant: room.room_name,
+        price: room.unit_price,
         quantity: quantity,
       }
     ]
@@ -474,19 +479,22 @@ Fires when an item is removed from the cart.
 
 | File | When | Notes |
 |---|---|---|
-| `components/molecules/CardRoomComponent.tsx` | Room card "−" click | Item-rich payload |
-| `contexts/cartContext.tsx` | After `removeFromCart()` API | **Gated** — only sends `item_id`, no other fields |
+| `contexts/cartContext.tsx` (`removeItemFromCart`) | After the cart-remove API call succeeds, for every room/tour removal site-wide | **Sole source as of 2026-07-16** (fixed — see below). Matches the removed line against the pre-removal cart snapshot to build a proper `items[]`; addons still send `item_id` only (no addon pricing available to match) |
+
+**Fixed 2026-07-16**: previously sent only `{ item_id }` — no `currency`/`value`/`items[]` at all — while `CardRoomComponent.tsx` separately pushed a second, richer event for room removals specifically (tours had no equivalent, so tour removals were undercounted). Fixed the same way as `add_to_cart` above and removed the redundant component-level push.
 
 ```typescript
 gtmPushEvent("remove_from_cart", {
   ecommerce: {
-    currency: "USD",
-    value: room.price * quantity,
+    item_id: itemId,
+    currency: "USD",              // uppercase
+    value: room.unit_price * quantity,
     items: [
       {
-        item_id: room.propertyId,
-        item_name: room.name,
-        price: room.price,
+        item_id: room.room_id,
+        item_name: room.room_name,
+        item_category: "Accommodation",
+        price: room.unit_price,
         quantity: quantity,
       }
     ]
@@ -505,7 +513,7 @@ Fires when the cart is displayed to the user before checkout.
 | `components/molecules/RoomShoppingCart.tsx` | "CONTINUE TO CHECKOUT" click | Item-rich |
 | `components/molecules/MobileRoomCart.tsx` | Mobile sticky checkout button | Item-rich |
 | `pages/tours-events/[slug].tsx` | Before `begin_checkout` on checkout click | `ecommerce: null` clear then item-rich |
-| `contexts/cartContext.tsx` | `checkoutCart()` call | **Gated** — minimal, no items |
+| `contexts/cartContext.tsx` | `checkoutCart()` call | **Gated** — minimal, no items. `currency` uppercased as of 2026-07-16 (was sent raw/lowercase) |
 
 ```typescript
 // Clear previous ecommerce data first
@@ -535,7 +543,8 @@ Fires when the user initiates the checkout process.
 ```typescript
 gtmPushEvent("begin_checkout", {    // or deferGtmPushEvent
   ecommerce: {
-    currency: "USD",
+    currency: "USD",   // uppercase — fixed 2026-07-16 (`contexts/cartContext.tsx` and `pages/booking/index.tsx`
+                        // previously sent the cart's raw, lowercase `currency` field directly)
     value: checkout.total,
     coupon: checkout.couponCode,
     items: checkout.items.map(item => ({
@@ -617,7 +626,7 @@ if (!sessionStorage.getItem(dedupKey)) {
   gtmPushEvent("purchase", {
     ecommerce: {
       transaction_id: paymentIntentId || cartId,
-      currency: "USD",
+      currency: "USD",              // uppercase; reflects the customer's actual charge currency, not always USD
       value: booking.total,
       coupon: booking.couponCode,
       original_value: booking.subtotal,     // pre-discount total
@@ -625,7 +634,9 @@ if (!sessionStorage.getItem(dedupKey)) {
       items: booking.items.map(item => ({
         item_id: item.propertyId,
         item_name: item.name,
-        item_category: item.type,
+        item_category: item.type,        // "Accommodation" | "Tour"
+        item_category2: item.country,    // destination country
+        item_category3: item.propertyName, // e.g. "Mad Monkey Dumaguete" — added 2026-07-16
         price: item.price,
         quantity: item.quantity,
         discount: item.discount,
@@ -635,6 +646,8 @@ if (!sessionStorage.getItem(dedupKey)) {
   });
 }
 ```
+
+**Multi-property orders (fixed 2026-07-16):** a single order can span more than one property (the "add a stop" checkout upsell). `items[]` is built from the confirmation response's `bookings[]` array (one entry per property, each with its own `destination`), not the flat top-level summary — a prior bug read only the flat summary and silently dropped every property's rooms except the anchor from `items[]` while `value` (sourced from `grandTotals.total`) already correctly included all of them. See `frontend/pages/booking/thanks.tsx` `lineItems` and `playwright-verify/verify-multiproperty-item-category3-local.mjs`.
 
 **Free tours** (zero-value bookings):
 ```typescript
@@ -657,7 +670,7 @@ gtmPushEvent("purchase", {
 | `original_value` | Pre-discount subtotal | Registered as dimension (wrong — should be metric, see §15 H6) |
 | `reservation_id` | Internal booking ID | Custom dimension — registered |
 | `coupon` | Applied coupon code | Standard |
-| `currency` | Always "USD" | Standard |
+| `currency` | Customer's actual charge currency (uppercase ISO 4217) — multi-currency, not fixed to USD | Standard |
 
 ---
 
