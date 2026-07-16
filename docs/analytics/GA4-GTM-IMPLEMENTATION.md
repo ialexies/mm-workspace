@@ -451,6 +451,8 @@ Fires when an item is added to the cart.
 
 **Fixed 2026-07-16** (`fix/ga4-currency-value-correctness`): this event used to double-fire — the shared `cartContext.tsx` handler pushed a minimal payload (`value` = the **whole cart's running total**, no `items[]`, lowercase `currency`), and `CardRoomComponent.tsx`/the tours flow (`useTourBooking.ts`) each pushed a **second**, richer event right after. Fixed by making the shared handler look up the specific line just added from the API response and build a correct single-item payload (reusing `buildGa4Item` from `utils/ecommerceDataLayer.ts`), then removing the now-redundant component-level pushes. `value` is now always uppercase `currency` and just the item(s) added in *this* event, not the cart total.
 
+**Fixed 2026-07-17** (`fix/tour-coupon-analytics`): the tour/rezdy branch of the same single-item builder never passed a `coupon` field at all (rooms always did) — always resolved to `""` even when a coupon was applied to the tour. Fixed by reading `cart.rezdy.coupon_codes` the same way the room branch already reads `room.coupon_codes`. Verified live with a real coupon (`TEST10`) showing correctly on a tour `add_to_cart`.
+
 ```typescript
 gtmPushEvent("add_to_cart", {
   ecommerce: {
@@ -463,6 +465,7 @@ gtmPushEvent("add_to_cart", {
         item_name: room.room_name,
         item_category: "Accommodation",
         item_variant: room.room_name,
+        coupon: "SUMMER20",       // applied coupon code, if any — now symmetric between rooms and tours
         price: room.unit_price,
         quantity: quantity,
       }
@@ -482,6 +485,8 @@ Fires when an item is removed from the cart.
 | `contexts/cartContext.tsx` (`removeItemFromCart`) | After the cart-remove API call succeeds, for every room/tour removal site-wide | **Sole source as of 2026-07-16** (fixed — see below). Matches the removed line against the pre-removal cart snapshot to build a proper `items[]`; addons still send `item_id` only (no addon pricing available to match) |
 
 **Fixed 2026-07-16**: previously sent only `{ item_id }` — no `currency`/`value`/`items[]` at all — while `CardRoomComponent.tsx` separately pushed a second, richer event for room removals specifically (tours had no equivalent, so tour removals were undercounted). Fixed the same way as `add_to_cart` above and removed the redundant component-level push.
+
+**Fixed 2026-07-17**: same tour-coupon gap as `add_to_cart` above (the rezdy branch never read `coupon_codes`) — fixed identically.
 
 ```typescript
 gtmPushEvent("remove_from_cart", {
@@ -536,8 +541,8 @@ Fires when the user initiates the checkout process.
 
 | File | When | Notes |
 |---|---|---|
-| `pages/tours-events/[slug].tsx:257` | "Book Now" click | **DUPLICATE — should be removed (§15 H3)** |
-| `pages/booking/index.tsx:1371` | Checkout form submitted, after API response | Canonical fire point |
+| `pages/tours-events/[slug].tsx:257` | "Book Now" click | **DUPLICATE — should be removed (§15 H3).** Found 2026-07-17: this early push shares the same `markCheckoutEventOnce("begin_checkout", cart.id)` dedupe key as the canonical one below and always fires first (before the user ever reaches the coupon input on `/booking`), and is built with **no `coupon` field at all** — so it always wins the dedupe race and every tour `begin_checkout` is coupon-blind, regardless of whether a coupon was actually applied. Rooms don't hit this (single-hop flow, only one `begin_checkout` push ever competes). Not yet fixed — tracked as a follow-up to H3. `purchase`'s coupon is a separate code path and is unaffected. |
+| `pages/booking/index.tsx:1371` | Checkout form submitted, after API response | Canonical fire point — has the correct, coupon-aware payload, but never actually reaches the dataLayer for tours (see H3 note above) |
 | `contexts/cartContext.tsx` | `checkoutCart()` call | **Gated** — minimal payload |
 
 ```typescript
@@ -648,6 +653,8 @@ if (!sessionStorage.getItem(dedupKey)) {
 ```
 
 **Multi-property orders (fixed 2026-07-16):** a single order can span more than one property (the "add a stop" checkout upsell). `items[]` is built from the confirmation response's `bookings[]` array (one entry per property, each with its own `destination`), not the flat top-level summary — a prior bug read only the flat summary and silently dropped every property's rooms except the anchor from `items[]` while `value` (sourced from `grandTotals.total`) already correctly included all of them. See `frontend/pages/booking/thanks.tsx` `lineItems` and `playwright-verify/verify-multiproperty-item-category3-local.mjs`.
+
+**Tour coupon (fixed 2026-07-17, frontend-only workaround):** the backend confirmation response has no coupon data for tours at all — `couponCodes`/`summary.coupons` are hardcoded empty in the rezdy confirmation branch (`backend/src/routes/cart.ts`), a real backend gap, deliberately deferred rather than fixed here. Rooms read `couponName` from `roomsSummary?.coupons` (backend-confirmed, accurate). Tours instead relay the coupon captured in `sessionStorage` at checkout time (`utils/bookingDataLayer.ts`'s `coupon` field, same mechanism already used for `hostel_country`/`hostel_name`) and read it back in `thanks.tsx`'s tours `lineItems` mapper. `value` is unaffected either way (always backend-confirmed) — only the coupon *label* uses this relay for tours. Narrow edge case: if a coupon is invalidated in the window between clicking pay and the charge completing, the relay could show a coupon that wasn't actually honored on the final charge — considered acceptable given how short that window is. Verified live with a real coupon (`TEST10`) on a tour purchase. Verifier: `playwright-verify/verify-tour-coupon-local.mjs`.
 
 **Free tours** (zero-value bookings):
 ```typescript
