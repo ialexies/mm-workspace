@@ -2,6 +2,9 @@
 frontend/
 backend/
 
+# Exclude lovable_pages sub-repos (each folder inside is its own git repo)
+lovable_pages/*/
+
 # Common ignores
 node_modules/
 nul
@@ -9,3 +12,6 @@ nul
 .env.local
 *.log
 .DS_Store
+
+# Ad-hoc Playwright verification scripts/screenshots (superseded by frontend/e2e/)
+playwright-verify/
