@@ -145,6 +145,8 @@ NEXT_PUBLIC_V3_API_BASE=http://127.0.0.1:18080/
 
 Then restart `npm run dev`. The public staging hostname (`staging-backend.madmonkeyhostels.com`) may route to a different pod than the K8s service — use port-forward for deposit checkout and other staging-specific features.
 
+**Testing from an Android emulator**: the same CORS restriction that motivates the port-forward above also blocks the public staging hostname when called from an emulator origin (`http://10.0.2.2:3000`) — use the port-forward URL there too. If `kubectl port-forward` fails with a credential error, `doctl` (the credential helper) likely needs re-authenticating (`doctl account get` to check, `doctl auth init` to fix — requires a DigitalOcean Personal Access Token). See [`frontend/docs/ANDROID_EMULATOR_LOCAL_TESTING.md`](frontend/docs/ANDROID_EMULATOR_LOCAL_TESTING.md) for this plus other emulator-specific issues (Google Sign-In errors, AVD storage, cleartext config).
+
 ## Key Conventions
 
 ### Frontend

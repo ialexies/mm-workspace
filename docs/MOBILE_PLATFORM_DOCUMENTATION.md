@@ -26,6 +26,11 @@ Comprehensive guide covering:
 - `frontend/pages/_app.tsx` - Status bar initialization
 - `frontend/hooks/useStatusBar.ts` - Status bar hooks
 
+### Local Emulator Testing
+**File**: [`frontend/docs/ANDROID_EMULATOR_LOCAL_TESTING.md`](../frontend/docs/ANDROID_EMULATOR_LOCAL_TESTING.md)
+
+Practical troubleshooting for running a local debug build on an Android emulator: pointing the WebView at your dev server (`10.0.2.2`, not `localhost`), AVD storage errors on install, CORS failures when calling the staging backend from an emulator origin (and the `kubectl`/`doctl` port-forward fix), and Google Sign-In's generic "problem communicating with Google servers" error (debug keystore SHA-1 registration vs. antivirus SSL inspection — two different causes, same symptom).
+
 ## iOS
 
 ### Settings Fix
@@ -62,6 +67,7 @@ For high-level architecture information, see:
 ## Quick Links
 
 - [Android Status Bar Configuration](../frontend/docs/ANDROID_STATUS_BAR_CONFIGURATION.md)
+- [Android Local Emulator Testing](../frontend/docs/ANDROID_EMULATOR_LOCAL_TESTING.md)
 - [iOS Settings Fix](./IOS_SETTINGS_FIX.md)
 - [Chat Window Keyboard Handling](../frontend/docs/CHATWINDOW_KEYBOARD_HANDLING.md)
 - [Klaviyo WhatsApp marketing opt-in (geofence)](../frontend/docs/KLAVIYO_WHATSAPP_MARKETING_OPT_IN.md)
