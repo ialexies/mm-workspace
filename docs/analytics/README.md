@@ -10,6 +10,7 @@ Central index for Mad Monkey V3 web and app analytics. Use these docs when chang
 | [GA4-GTM-IMPLEMENTATION.md](./GA4-GTM-IMPLEMENTATION.md) | Engineering, GTM admin | How tracking works today: architecture, events, flows, GTM/GA4/Ads config, testing, incidents |
 | [GA4-GTM-ROADMAP-AND-REPORTING.md](./GA4-GTM-ROADMAP-AND-REPORTING.md) | Engineering, marketing, ops | Recommended next steps, documentation process, reporting & monitoring |
 | [GA4-GTM-AUDIT-REPORT.md](../../GA4-GTM-AUDIT-REPORT.md) | Leadership, ads, engineering | May 2026 audit findings, severity, fix roadmap, technical appendix |
+| [GTM_CONVERSION_TAGS_BUILD_SPEC.md](./GTM_CONVERSION_TAGS_BUILD_SPEC.md) | GTM admin (Kyle / agency) | Per-conversion-type tag/trigger/variable build spec for Google Ads, Meta, TikTok, GA4 (Hostel/Tour/Surf Camp/Parent Voucher/ALL IN Purchases) |
 
 ## Interactive report
 
@@ -48,6 +49,7 @@ Marketing sometimes ships a landing page as its own repo/hosting (e.g. Lovable-b
 - **Fixing conversions / ROAS** → Audit report (Critical + Week 1 roadmap), then Roadmap reporting section
 - **Onboarding a new developer** → Implementation doc §1–§2, then this README
 - **Building a new standalone landing page (Lovable, own repo, etc.)** → Implementation doc §19
+- **Building per-conversion-type ad tags (Google Ads / Meta / TikTok / GA4)** → GTM_CONVERSION_TAGS_BUILD_SPEC.md
 
 ---
 
