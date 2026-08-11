@@ -37,13 +37,18 @@ Central index for Mad Monkey V3 web and app analytics. Use these docs when chang
 | `frontend/pages/_app.tsx` | Clarity, native `screen_view`, route listeners |
 | `frontend/pages/booking/thanks.tsx` | Canonical `purchase` + deduplication |
 
+## Standalone landing pages (non-`frontend/` repos)
+
+Marketing sometimes ships a landing page as its own repo/hosting (e.g. Lovable-built, deployed to Vercel) instead of a route inside `frontend/`. [`docs/GSC-REDIRECT-INDEXING-REVIEW.md`](../GSC-REDIRECT-INDEXING-REVIEW.md#background-landing-page-architecture-question) flagged this pattern as risking analytics fragmentation if each repo bootstraps its own GTM container or GA4 property. Policy: **every standalone landing page reuses the same `GTM-KC78NFHD` container and `G-K27E7XLRBP` GA4 property** — never a new one. See Implementation doc §19 for the bootstrap pattern, policy detail, and onboarding checklist. Two pages built under this policy so far: `parents-voucher/` (Gift of Travel voucher page) and `lovable_pages/mm-squad-trips/` (All In group trips — also the reference for reporting server-side/webhook revenue via GA4 Measurement Protocol, §19.3).
+
 ## When to read which doc
 
 - **Changing an event or booking flow** → Implementation doc §4–§6, then Roadmap PR checklist
 - **Publishing GTM** → Implementation doc §11, §16–§18
 - **Fixing conversions / ROAS** → Audit report (Critical + Week 1 roadmap), then Roadmap reporting section
 - **Onboarding a new developer** → Implementation doc §1–§2, then this README
+- **Building a new standalone landing page (Lovable, own repo, etc.)** → Implementation doc §19
 
 ---
 
-*Last updated: May 2026*
+*Last updated: August 2026 (added §19 standalone landing pages)*

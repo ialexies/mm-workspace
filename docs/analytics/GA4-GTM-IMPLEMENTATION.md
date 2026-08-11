@@ -2,7 +2,7 @@
 
 **Version:** Based on GTM-KC78NFHD v34 · GA4 G-K27E7XLRBP  
 **Frontend stack:** Next.js 14 (Pages Router) + Capacitor (iOS / Android)  
-**Last updated:** May 2026  
+**Last updated:** August 2026 (§19 standalone landing pages added)  
 **Related:** [Analytics index](./README.md) · [Roadmap & reporting](./GA4-GTM-ROADMAP-AND-REPORTING.md) · [Audit report](../../GA4-GTM-AUDIT-REPORT.md)
 
 ---
@@ -27,6 +27,7 @@
 16. [Testing & Debugging](#16-testing--debugging)
 17. [How to Add a New Tracking Event](#17-how-to-add-a-new-tracking-event)
 18. [Incident & Rollback Guide](#18-incident--rollback-guide)
+19. [Standalone Landing Pages (Non-Frontend Repos)](#19-standalone-landing-pages-non-frontend-repos)
 
 ---
 
@@ -1427,6 +1428,11 @@ A full audit was conducted in May 2026. The following issues were identified. Se
 | `frontend/components/molecules/SocialSignIn.tsx` | `login` (may send PII) |
 | `frontend/pages/auth/callback.tsx` | `login` (may send PII) |
 | `frontend/types/global.d.ts` | Window type declarations (incomplete — see §15 L5) |
+| `parents-voucher/src/template.html` | Standalone landing page: Consent Mode default, GTM loader, `mmTrack()` push helper (see §19) |
+| `lovable_pages/mm-squad-trips/index.html` | Standalone landing page: Consent Mode default, GTM loader (see §19) |
+| `lovable_pages/mm-squad-trips/src/utils/gtmTracker.ts` | `gtmPushEvent`/`deferGtmPushEvent`, ported from `frontend/utils/gtmTracker.ts` |
+| `lovable_pages/mm-squad-trips/src/utils/ecommerceDataLayer.ts` | GA4 `items[]` builder, `item_category4: "All In"`, `conversion_type: "all_in"` |
+| `lovable_pages/mm-squad-trips/supabase/functions/charge-trip-balances/index.ts` | Server-side balance `purchase` report via GA4 Measurement Protocol (see §19.3) |
 
 ---
 
@@ -1925,4 +1931,76 @@ Run this check after every code deploy that touches analytics or after every GTM
 
 ---
 
-*Documentation generated from source audit May 2026. Keep this document updated when changing event names, parameters, or GTM configuration.*
+## 19. Standalone Landing Pages (Non-Frontend Repos)
+
+Marketing sometimes ships a landing page as its own repo/hosting (e.g. built in Lovable, deployed to Vercel) instead of a route inside `frontend/`, to move fast without an eng bottleneck. [`docs/GSC-REDIRECT-INDEXING-REVIEW.md`](../GSC-REDIRECT-INDEXING-REVIEW.md#background-landing-page-architecture-question) flagged this pattern as risking "analytics fragmentation" if each repo bootstraps its own GTM container or GA4 property. This section is the policy that closes that gap.
+
+### 19.1 Policy
+
+- **Reuse `GTM-KC78NFHD` and `G-K27E7XLRBP`** (see §1 GA4 measurement IDs). Never provision a new GTM container or GA4 property for a landing page — a new one means separate reporting, a separate Google Ads bidding pool, and no shared audiences/attribution with the rest of the site.
+- These repos aren't Next.js, so they can't import `GTM.tsx` / `_document.tsx` / `gtmTracker.ts` directly. Re-implement the same *pattern* by hand: Consent Mode default → `dataLayer` push → GTM loader snippet.
+- Push a stable, top-level page-identifier into `dataLayer` **before** the GTM loader line, so GTM/GA4 can segment this page's hits from the rest of the site without unpacking `ecommerce`. The frontend's own convention (`_document.tsx`) pushes `user_group`; the reference implementation below uses `app_name` — either shape is fine, what matters is a stable top-level key.
+- **Do not confuse that page-identifier with `site_type`** — a separate, narrower dataLayer key that `_document.tsx` sets to `'app'` only when running inside Capacitor native, and otherwise omits. It is the signal GTM's app-only GA4 tag keys off of to route events to the native app's GA4 stream (`G-WVGB07X1M6`, §9.2) instead of the web property (`G-K27E7XLRBP`); see the inline comment at `_document.tsx` ~L332. A standalone landing page that is never loaded inside the Capacitor webview should **not** set `site_type` at all — omitting it is what makes GTM's routing default to the shared web GA4 property, exactly like a normal web page load in `frontend/`. Only set `site_type: 'app'` if the page is ever embedded in the native app's in-app browser/webview.
+- No separate Cookiebot `<script>` needed — the shared GTM container already carries a Cookiebot CMP tag that self-loads Cookiebot and drives Consent Mode updates once `gtm.js` loads. Adding a second Cookiebot script produces a duplicate-load console warning against this container.
+- Ecommerce-shaped events only: don't manually push `page_view` (the shared container's GA4 Configuration tag auto-fires it on every hard load), and skip the TikTok twin / idle-defer machinery in `gtmTracker.ts` — out of scope for a single-purpose funnel page.
+- Any conversion discriminator (the shared GA4 event tag's equivalent of `conversion_type`) must sit at the **top level of the event object, as a sibling of `ecommerce`** — not nested inside it. GA4's ecommerce parser silently drops non-standard nested fields. Mirrors `frontend/utils/bookingDataLayer.ts`'s `ConversionType` (`"room" | "tour"`) convention exactly.
+- If the page calls the backend API, add its hostname to the backend CORS allowlist before pointing DNS at it (`localhost` and `*.vercel.app` are already allowed; custom domains are not).
+- Wrap the `dataLayer.push` call in `try/catch` — analytics must never be able to break the page's core flow (payment, form submit, etc.).
+
+### 19.2 Reference implementations
+
+Two landing pages have been built under this policy so far:
+
+| | [`parents-voucher/`](../../parents-voucher/) | [`lovable_pages/mm-squad-trips/`](../../lovable_pages/mm-squad-trips/) |
+|---|---|---|
+| Product | Gift of Travel voucher purchase | "All In" group trips (deposit + balance) |
+| Repo / hosting | Separate repo, Vercel | Separate repo, Lovable-managed (GitHub `CFSiteDesign/mm-squad-trips`) |
+| Stack | Plain HTML + inline JS, no framework | Vite + React + TypeScript + Supabase |
+| Served at | `giftvouchers.madmonkeyhostels.com` (own subdomain) | `/all-in-trips` on `madmonkeyhostels.com` (path, via Lovable custom domain) |
+| GTM container | `GTM-KC78NFHD` (shared) | `GTM-KC78NFHD` (shared, injected via `VITE_GTM_ID` env var → `%VITE_GTM_ID%` in `index.html`) |
+| GA4 property | `G-K27E7XLRBP` (shared) | Same shared container's GA4 tag — see also §19.3 (Measurement Protocol) |
+| Bootstrap location | Inline `<script>` in `src/template.html` `<head>` (rebuilt into `index.html` via `node build.mjs` — never hand-edit the generated file) | Inline `<script>` in `index.html` `<head>` |
+| Page/event discriminator | `{ app_name: 'gift-vouchers' }` pushed pre-GTM, plus `conversion_type: 'gift_voucher'` per event | No page-level `dataLayer` flag; `item_category4: "All In"` on every item + `conversion_type: 'all_in'` per event |
+| `site_type` (GA4 property routing) | Not set — pure web page, never embedded in the Capacitor webview, so it correctly falls through to the web-property default (see §19.1) | Not set — same reasoning, pure web page |
+| Event push helper | `window.mmTrack(eventName, ecommerceData)` | `src/utils/gtmTracker.ts` + `src/utils/ecommerceDataLayer.ts` — ported near-verbatim from `frontend/utils/*`, minus the TikTok twin (no TikTok Pixel on this site) |
+| Conversion discriminator | `conversion_type: 'gift_voucher'` (top-level, sibling of `ecommerce`) | `conversion_type: 'all_in'` (same convention) |
+| Cookiebot | Loaded by the GTM container's own CMP tag; no separate script | Same policy — a hardcoded second Cookiebot `<script>` was found and removed as a bug fix, see that repo's own [`docs/GTM_GA4_IMPLEMENTATION.md`](../../lovable_pages/mm-squad-trips/docs/GTM_GA4_IMPLEMENTATION.md) |
+| Own docs | [`parents-voucher/README.md`](../../parents-voucher/README.md#analytics) | [`docs/GTM_GA4_IMPLEMENTATION.md`](../../lovable_pages/mm-squad-trips/docs/GTM_GA4_IMPLEMENTATION.md), [`docs/GTM_GA4_TESTING.md`](../../lovable_pages/mm-squad-trips/docs/GTM_GA4_TESTING.md) |
+
+`parents-voucher/` domains (from [its README](../../parents-voucher/README.md#domains)):
+
+| Host | Serves | Notes |
+|---|---|---|
+| `giftvouchers.madmonkeyhostels.com` | Canonical page | Production |
+| `parents.madmonkeyhostels.com` | 301 → `giftvouchers.*` | Retired domain, deliberately kept alive for old shared/printed links |
+| `parents-voucher.vercel.app` | Vercel preview | Staging / Stripe test mode |
+
+### 19.3 Server-side reporting via GA4 Measurement Protocol (`mm-squad-trips` pattern)
+
+`mm-squad-trips` sells trips as a **deposit at booking + a balance charged later** (`supabase/functions/charge-trip-balances/index.ts`). The deposit fires a normal client-side `purchase` event, but the balance charge happens server-side, days later, with no page load to hang a `dataLayer.push` off of — so it can't reuse the GTM/`dataLayer` path at all. Instead that edge function calls the [GA4 Measurement Protocol](https://developers.google.com/analytics/devguides/collection/protocol/ga4) directly:
+
+- `POST https://www.google-analytics.com/mp/collect?measurement_id=<GA4_MEASUREMENT_ID>&api_secret=<GA4_MP_API_SECRET>` with a `purchase` event, `transaction_id: "<session_id>-balance"` (suffixed so GA4 doesn't dedupe it against the deposit's own `transaction_id` — deposit + balance are meant to sum to the full trip price), and the same `conversion_type: "all_in"` / `item_category4: "All In"` shape as the client-side events.
+- Uses the visitor's own GA4 `client_id` (read from the `_ga` cookie at booking time) so the balance revenue attributes to the same visitor/session as the deposit; if no `client_id` was captured (visitor declined analytics consent), it skips rather than fabricate a client id for someone who opted out.
+- **As of this writing, `GA4_MEASUREMENT_ID` / `GA4_MP_API_SECRET` are not yet provisioned as Supabase Edge Function secrets, so the call is a safe no-op in production** (`sendBalancePurchaseToGa4` short-circuits with `skipped:not_configured` if either is unset). Provisioning is a Supabase project secret, not a code change — set `GA4_MEASUREMENT_ID` to the shared prod web stream (`G-K27E7XLRBP`) and get `GA4_MP_API_SECRET` from GA4 Admin → Data Streams → that stream → Measurement Protocol API secrets.
+
+This is the pattern to reach for whenever a standalone landing page needs to report revenue/events from a backend job, webhook, or any other context with no browser page load — not just for `mm-squad-trips`.
+
+### 19.4 Checklist for a new standalone landing page
+
+```
+[ ] Reuse GTM-KC78NFHD and G-K27E7XLRBP — do not create a new container or property
+[ ] Copy the Consent Mode default + GTM loader snippet from parents-voucher/src/template.html
+    or lovable_pages/mm-squad-trips/index.html
+[ ] Push a stable top-level dataLayer discriminator before the GTM loader (app_name / equivalent)
+[ ] No separate Cookiebot script — confirm the shared container's CMP tag still fires (GTM Preview)
+[ ] Any conversion_type / custom event lives top-level, sibling of `ecommerce`
+[ ] Wrap dataLayer pushes in try/catch
+[ ] New hostname added to backend CORS allowlist before DNS cutover (if the page calls the API)
+[ ] Server-side/webhook revenue (no page load) → GA4 Measurement Protocol, not dataLayer (§19.3)
+[ ] Verified in GTM Preview + GA4 DebugView (§16) before going live
+[ ] Add a row to the table in §19.2 documenting the new page
+```
+
+---
+
+*Documentation generated from source audit May 2026. §19 added August 2026. Keep this document updated when changing event names, parameters, or GTM configuration.*
