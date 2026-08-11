@@ -29,14 +29,32 @@ group trip) drove a given conversion, so campaigns can't be optimized or reporte
 - No GTM/Ads/Meta API access was available to build this directly — everything below is a spec to
   hand-implement, not something already pushed live.
 
-## Frontend prerequisite (done)
+## Frontend prerequisite (done, pushed — not yet merged)
 
-`frontend/utils/ecommerceDataLayer.ts` now sets `item_category: "Surf Camp"` (not `"Tour"`) for tours whose
-name/slug matches `isSurfCampTour()`, on branch `feature/gtm-conversion-tracking` — so "Tour" and "Surf
-Camp" are mutually exclusive at the item level and can be told apart with a single equality check. No other
-frontend changes are required: `conversion_type` (`room` / `tour` / `gift_voucher` / `all_in`),
+Tours whose name/slug matches `isSurfCampTour()` now get `item_category: "Surf Camp"` (not `"Tour"`),
+mutually exclusive at the item level, in all three places that build a GA4 item for a tour — not just one:
+
+- `frontend/utils/ecommerceDataLayer.ts` — `buildCartEcommerceItems()` (both the optimistic-`items[]` and
+  single-tour branches) and `buildSummaryEcommerceItems()`
+- `frontend/contexts/cartContext.tsx` — the `add_to_cart` and `remove_from_cart` item builders
+- `frontend/pages/tours-events/[slug].tsx` — the `begin_checkout` item builder (a separate direct
+  `buildGa4Item()` call that predates the shared helpers and was easy to miss)
+
+All three were hardcoding `item_category: ITEM_CATEGORY_TOUR` regardless of surf-camp status; only
+`item_category4` reflected it before this fix. Pushed to `origin/feature/gtm-conversion-tracking` on
+`next-web-app` (commit `2aa253ae`) — branch exists on GitHub, no PR opened yet, not merged into `v3-main`.
+
+**Verified live**, not just unit-tested: booked the surf-camp tour and a control tour (Valencia Tour) on
+localhost through the real UI (date selection → checkout → guest/login → Stripe test payment) and read the
+actual `dataLayer` events — `add_to_cart`, `begin_checkout`, and `purchase` all correctly show
+`item_category: "Surf Camp"` for the surf-camp booking and `"Tour"` for the control. Independently
+re-confirmed the `begin_checkout` payload in Tag Assistant.
+
+No other frontend changes are required: `conversion_type` (`room` / `tour` / `gift_voucher` / `all_in`),
 `item_category` (`Accommodation` / `Tour` / `Surf Camp` / `Gift Voucher`), and the standard
-`ecommerce.value` / `currency` / `items[]` fields already carry everything the tags below key off of.
+`ecommerce.value` / `currency` / `items[]` fields already carry everything the tags below key off of. Note
+`conversion_type` intentionally stays `"tour"` for surf camp bookings — it's a flow-level field (which
+booking engine handled checkout), not a product-level one; `item_category` is what the new triggers read.
 
 **Known consequence:** any existing GA4 report/audience filtering `item_category == "Tour"` no longer
 includes surf camp bookings going forward (historical rows are unaffected — this only changes new data).
@@ -207,4 +225,5 @@ blocker for this build since `conversion_type` already does the job at the event
 
 Container export: [`frontend/docs/analytics/gtm/GTM-KC78NFHD_workspace48.json`](../../frontend/docs/analytics/gtm/GTM-KC78NFHD_workspace48.json).
 Full architecture: [GA4-GTM-IMPLEMENTATION.md](./GA4-GTM-IMPLEMENTATION.md).
-Code change: `frontend/utils/ecommerceDataLayer.ts` on `feature/gtm-conversion-tracking`.
+Code change: `ecommerceDataLayer.ts`, `cartContext.tsx`, `pages/tours-events/[slug].tsx` on
+`feature/gtm-conversion-tracking` (pushed to `next-web-app`, not yet a PR).
