@@ -1,11 +1,14 @@
 # GTM Conversion Tags Build Spec — per-conversion-type tracking for Google Ads, Meta, TikTok, GA4
 
-**Status:** Ready to build in GTM. Nothing in this doc has been published to the live container — it's a
-precise spec for whoever has `GTM-KC78NFHD` access (Kyle or the agency) to implement tag-by-tag.
+**Status:** Build in progress, live in `GTM-KC78NFHD`. See [Build progress](#build-progress) below for
+exactly what's built, what's verified, and what's next — read that section first if you're picking this up
+in a new session/machine.
 
 **Why:** the ad platforms and GA4 currently only see one generic `purchase` conversion. There's no way to
 tell Google Ads, Meta, or TikTok which purchase type (room booking, tour, surf camp, gift voucher, ALL IN
-group trip) drove a given conversion, so campaigns can't be optimized or reported per product line.
+group trip) drove a given conversion, so campaigns can't be optimized or reported per product line. This
+was raised by DemandMore (the ad agency, contact Luke) via email — see
+[Luke's requirements → where this is answered](#lukes-requirements--where-this-is-answered) below.
 
 ## Before you build: what's already there
 
@@ -27,9 +30,52 @@ group trip) drove a given conversion, so campaigns can't be optimized or reporte
   firing with consent denied on staging 2026-07-03. **Every new tag in this spec must be consent-gated
   from the start** — see §5. Don't copy the existing tags' un-gated config.
 - No GTM/Ads/Meta API access was available to build this directly — everything below is a spec to
-  hand-implement, not something already pushed live.
+  hand-implement, not something already pushed live. (Track B, the live build itself, is now underway by
+  hand in the GTM UI — see [Build progress](#build-progress).)
 
-## Frontend prerequisite (done, pushed — not yet merged)
+## Luke's requirements → where this is answered
+
+DemandMore's email raised two complaints and listed 6 conversion types (All Purchases, Hostel, Tour, Surf
+Camp, Parent Vouchers, HGL Purchases, ALL IN — Meta/TikTok said to be top priority). Mapping his asks to
+what actually closes them:
+
+| Ask | Answered by |
+|---|---|
+| "No unique GA4 Key Events, only one generic `purchase`" | §3's 5 new GA4 event tags (`purchase_hostel`, `purchase_tour`, `purchase_surf_camp`, `purchase_parent_voucher`, `purchase_all_in`) + starring each as a Key Event in GA4 Admin after publish |
+| "Ad platforms can't see/report per product line" | §3's named custom events (`Purchase_Hostel` etc.) on Meta/TikTok → Custom Conversions in each platform's Events Manager; §4's new Google Ads Conversion Actions |
+| "Is the Pixel even installed / firing on every page?" | Already true today, not a gap — see "Before you build" above (Meta + TikTok pixels already fire container-wide, including both standalone sites) |
+| HGL Purchases | **Deferred** — see [HGL Purchases (deferred, 6th type)](#hgl-purchases-deferred-6th-type) |
+
+## Build progress
+
+Tracking per-conversion-type status so this can be picked up from any machine. Build order and rationale in
+full is in the (superseded, historical) plan; this table is the live source of truth.
+
+| Type | Trigger | GA4 tag | Meta tag | TikTok tag | Google Ads tag | Status |
+|---|---|---|---|---|---|---|
+| **ALL IN** | `Purchase - All In` built | `GA4 - Event - Purchase All In` built | `FBP Custom - Purchase All In` built | `TikTok Custom - Purchase All In` built | not started | **Built + verified in GTM Preview** (fired correctly, all parameter values resolved — `items`, `content_ids`/`contents` non-empty — alongside the existing aggregate "All Purchases" tags). Consent-gated (`ad_storage`/`ad_user_data`, `NEEDED`) on all 3 new tags. Google Ads tag blocked on §4. **Publish status: instructions given to submit this workspace as a version named "ALL In conversion tags — GA4/Meta/TikTok" — confirm on resume whether that was actually clicked before treating it as live.** |
+| **Parent Voucher** | not started | not started | not started | not started | not started | **Next up.** Same pattern as ALL IN (`conversion_type equals gift_voucher`), no new JS variables needed. |
+| **Hostel** | not started | not started | not started | not started | not started | Not started. Needs `Purchase Has Accommodation Item` JS variable first (§1). |
+| **Tour** | not started | not started | not started | not started | not started | Not started. Needs `Purchase Has Tour Item` JS variable + shared `Purchase Content IDs` variable (§1). |
+| **Surf Camp** | not started | not started | not started | not started | not started | Not started. Needs `Purchase Has Surf Camp Item` JS variable (§1). |
+| **HGL** | — | — | — | — | — | Deferred — not designed, no definition exists yet (see below). |
+
+**Other open items:**
+- **Google Ads Conversion Actions (§4)** — not created yet for any type. Blocking dependency for all 5
+  Google Ads tags. Whoever has Google Ads admin needs to create them in Tools & Settings → Conversions.
+- **`Google Ads - Purchase` (existing aggregate tag) is still `consentStatus: NOT_SET`** — confirmed via
+  container export diff on 2026-08-12. Meta's and TikTok's aggregate tags (`FBP Purchase Tag`,
+  `FBP PageView Tag`, `TikTok - All Events`, `TikTok - All Pages`) were already fixed to `NEEDED` before
+  this build started (predates this session — see §5's "Existing tags" note for current state). Google Ads
+  is the one platform still open against M4.
+- **GA4 Key Events** — none of the 5 new event names have been starred yet in GA4 Admin (can't be, until
+  at least one has fired against a published version and appears in the Events list).
+- **HGL Purchases (deferred, 6th type)** — DemandMore's email is the first place "HGL" appears anywhere;
+  no `HGL` category, item, or `conversion_type` value exists in `frontend/` or the GTM container today. Do
+  not invent a definition — wait for Kyle to clarify what HGL actually refers to before designing a trigger
+  or tags for it.
+
+## Frontend prerequisite (done, merged)
 
 Tours whose name/slug matches `isSurfCampTour()` now get `item_category: "Surf Camp"` (not `"Tour"`),
 mutually exclusive at the item level, in all three places that build a GA4 item for a tour — not just one:
@@ -41,8 +87,8 @@ mutually exclusive at the item level, in all three places that build a GA4 item 
   `buildGa4Item()` call that predates the shared helpers and was easy to miss)
 
 All three were hardcoding `item_category: ITEM_CATEGORY_TOUR` regardless of surf-camp status; only
-`item_category4` reflected it before this fix. Pushed to `origin/feature/gtm-conversion-tracking` on
-`next-web-app` (commit `2aa253ae`) — branch exists on GitHub, no PR opened yet, not merged into `v3-main`.
+`item_category4` reflected it before this fix. Commit `2aa253ae`, now **merged into both
+`origin/new-v3-staging` and `origin/v3-main`** — no code work remains here.
 
 **Verified live**, not just unit-tested: booked the surf-camp tour and a control tour (Valencia Tour) on
 localhost through the real UI (date selection → checkout → guest/login → Stripe test payment) and read the
@@ -124,10 +170,20 @@ the end of this section).
 
 ### TikTok
 
+**Naming caveat — read before building Hostel/Tour/Surf Camp:** `frontend/utils/gtmTracker.ts`'s
+`ensureTikTokTrackPatched()` monkey-patches `window.ttq.track` the first time any event fires on the main
+site (as early as `view_item`), and rewrites any event name not in its internal map by stripping
+non-alphanumeric characters — `"Purchase_Hostel"` arrives at TikTok as `"PurchaseHostel"`. This only
+affects the main site (Hostel/Tour/Surf Camp); the standalone sites (Parent Voucher, ALL IN) don't load
+`gtmTracker.ts` so their names pass through unmangled. **Use no-underscore names for Hostel/Tour/Surf Camp**
+(`PurchaseHostel`, `PurchaseTour`, `PurchaseSurfCamp`) so the string you configure in GTM matches what
+actually lands at TikTok. ALL IN's tag was already built using `Purchase_AllIn` (with underscore) — that's
+fine and doesn't need retrofitting, since the standalone site isn't subject to this patch.
+
 - **Name:** `TikTok Custom - Purchase Hostel`
 - **Type:** Custom HTML (reads straight off the original `purchase` dataLayer push — `ttq` is already
   initialized by the existing `TikTok - All Pages` tag, so no new pixel bootstrap is needed)
-- **Event:** `ttq.track('Purchase_Hostel', {value: {{ecommerce.value}}, currency: {{ecommerce.currency}}, contents: {{Purchase Content IDs}}})`
+- **Event:** `ttq.track('PurchaseHostel', {value: {{ecommerce.value}}, currency: {{ecommerce.currency}}, contents: {{Purchase Content IDs}}})`
 - **Trigger:** `Purchase - Hostel`
 - Same rationale as Meta: keep the existing `CompletePayment` twin-event path (already fired by
   `gtmTracker.ts`'s `tiktokEventMap` for every purchase) as the "All Purchases" signal; these are additive,
@@ -146,12 +202,18 @@ the end of this section).
 
 ### Repeat for the other 4 types
 
-| Type | Trigger | GA4 Event Name | Meta/TikTok custom event name |
-|---|---|---|---|
-| Tour | `Purchase - Tour` | `purchase_tour` | `Purchase_Tour` |
-| Surf Camp | `Purchase - Surf Camp` | `purchase_surf_camp` | `Purchase_SurfCamp` |
-| Parent Voucher | `Purchase - Parent Voucher` | `purchase_parent_voucher` | `Purchase_ParentVoucher` |
-| ALL IN | `Purchase - All In` | `purchase_all_in` | `Purchase_AllIn` |
+Meta's `fbq('trackCustom', …)` name and TikTok's `ttq.track(…)` name differ for Hostel/Tour/Surf Camp
+because of the `gtmTracker.ts` mangling above — Meta isn't patched, so it keeps the underscore; TikTok's
+name is what you type into GTM but must already be pre-stripped so it matches what TikTok actually receives.
+Parent Voucher and ALL IN aren't subject to the patch, so both platforms use the same underscored name.
+
+| Type | Trigger | GA4 Event Name | Meta custom event name | TikTok custom event name (as configured in GTM) |
+|---|---|---|---|---|
+| Hostel | `Purchase - Hostel` | `purchase_hostel` | `Purchase_Hostel` | `PurchaseHostel` |
+| Tour | `Purchase - Tour` | `purchase_tour` | `Purchase_Tour` | `PurchaseTour` |
+| Surf Camp | `Purchase - Surf Camp` | `purchase_surf_camp` | `Purchase_SurfCamp` | `PurchaseSurfCamp` |
+| Parent Voucher | `Purchase - Parent Voucher` | `purchase_parent_voucher` | `Purchase_ParentVoucher` | `Purchase_ParentVoucher` |
+| ALL IN | `Purchase - All In` | `purchase_all_in` | `Purchase_AllIn` | `Purchase_AllIn` (**built**) |
 
 ### Existing tags — no functional change, just note what they now mean
 
@@ -159,6 +221,22 @@ The pre-existing `FBP Purchase Tag (…1798465) - V2`, `TikTok - All Events` (or
 carries the `CompletePayment` mapping), and `Google Ads - Purchase` tags are already, functionally, the
 "All Purchases" tag for their platform (see §2, `Purchase - All`). No changes needed to them beyond §5's
 consent-gating recommendation — just document them as the aggregate signal so nobody duplicates them.
+
+**Current consent-gating status (checked 2026-08-12 via container export diff):** Meta's and TikTok's
+aggregate tags (`FBP Purchase Tag`, `FBP PageView Tag`, `TikTok - All Events`, `TikTok - All Pages`) have
+already been flipped from `NOT_SET` to `NEEDED [ad_storage, ad_user_data]`. **`Google Ads - Purchase` is
+still `NOT_SET`** — this is the one remaining action item from M4, not hypothetical; fix it while someone's
+in Google Ads for §4 anyway.
+
+### ALL IN — known limitation: balance charge never reaches these tags
+
+Per §19.3 of [GA4-GTM-IMPLEMENTATION.md](./GA4-GTM-IMPLEMENTATION.md), `mm-squad-trips` charges a deposit
+client-side (a normal `dataLayer` push, which is what all 3 built ALL IN tags fire on), but the **balance**
+— often the larger share of trip value — is charged server-side via a Supabase edge function calling the
+GA4 Measurement Protocol directly, bypassing `dataLayer`/GTM entirely. None of the ALL IN tags in this spec
+(GA4, Meta, TikTok, or the future Google Ads tag) can ever fire for that portion. Out of scope for this
+build — fixing it means work in the separate `mm-squad-trips` repo plus new server-side Conversions API
+integrations per platform, not a GTM change.
 
 ## 4. Blocking dependency — Google Ads Conversion Actions
 
@@ -186,9 +264,12 @@ Set, on all 15 new advertising tags (Meta ×5, TikTok ×5, Google Ads ×5):
 ```
 
 This is the exact template already documented in
-[`M4_AD_PIXEL_CONSENT.md`](../../frontend/docs/analytics/M4_AD_PIXEL_CONSENT.md) (copied from
-`Reddit - All Pages`, the one tag that already does this correctly). The 5 new GA4 event tags should follow
-GA4's existing `analytics_storage` consent pattern, same as the rest of the GA4 tags in the container.
+[`M4_AD_PIXEL_CONSENT.md`](../../frontend/docs/analytics/M4_AD_PIXEL_CONSENT.md). Note: `Reddit - All Pages`
+is the closest existing example of a gated tag, but its live config only sets `ad_storage` —
+`ad_user_data` is M4's own recommended *addition*, not something already present on Reddit's tag today.
+Don't copy Reddit's tag as-is; apply the full two-item list above to every new tag in this spec. The 5 new
+GA4 event tags should follow GA4's existing `analytics_storage` consent pattern, same as the rest of the
+GA4 tags in the container.
 
 **Recommend, don't silently do:** while touching this container, also apply the same fix to the
 pre-existing generic Meta/TikTok/Ads tags — M4 is still open against them as of the last audit check.
@@ -221,9 +302,23 @@ blocker for this build since `conversion_type` already does the job at the event
 - **GA4:** DebugView to confirm the 5 new `purchase_*` events land with correct parameters, then confirm
   they appear as Key Events in GA4 Admin.
 
+**Two caveats about verification claims elsewhere in the repo, flagged (not fixed) here:**
+- **No test runner exists in this repo.** There are 13 `*.test.ts` files — including the one covering the
+  Surf Camp `item_category` change this build depends on — but no Jest dependency, config, script, or CI
+  step actually executes them. Don't treat "there's a test for it" as evidence of coverage; the only real
+  verification for the frontend change was the manual live-booking check described above.
+- **`deploy-k8s.yml` deploys on push to `main`, but `origin/main` is a stale, disconnected branch** — the
+  Surf Camp fix being merged into `v3-main` does not mean it's live in production. Don't assert
+  "in production" anywhere without checking which branch is actually deployed at the time.
+
 ## Reference
 
-Container export: [`frontend/docs/analytics/gtm/GTM-KC78NFHD_workspace48.json`](../../frontend/docs/analytics/gtm/GTM-KC78NFHD_workspace48.json).
+Container export baseline in the repo: [`frontend/docs/analytics/gtm/GTM-KC78NFHD_workspace48.json`](../../frontend/docs/analytics/gtm/GTM-KC78NFHD_workspace48.json)
+— **stale as of this build.** A newer export (`workspace52`, pulled 2026-08-12, containing the consent-gating
+fixes and reflecting the state right before the ALL IN tags were built) was compared against it in a scratch
+directory that does not persist across sessions/machines. If you need to diff current-vs-baseline again,
+re-export the live workspace from GTM rather than looking for that file — it won't be there.
+
 Full architecture: [GA4-GTM-IMPLEMENTATION.md](./GA4-GTM-IMPLEMENTATION.md).
-Code change: `ecommerceDataLayer.ts`, `cartContext.tsx`, `pages/tours-events/[slug].tsx` on
-`feature/gtm-conversion-tracking` (pushed to `next-web-app`, not yet a PR).
+Code change: `ecommerceDataLayer.ts`, `cartContext.tsx`, `pages/tours-events/[slug].tsx`, commit `2aa253ae`,
+merged into `new-v3-staging` and `v3-main`.
