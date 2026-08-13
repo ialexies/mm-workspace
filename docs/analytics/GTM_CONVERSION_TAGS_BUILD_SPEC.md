@@ -16,7 +16,7 @@ was raised by DemandMore (the ad agency, contact Luke) via email — see
   as tags in `GTM-KC78NFHD` (see §11.1 of [GA4-GTM-IMPLEMENTATION.md](./GA4-GTM-IMPLEMENTATION.md)) and
   already fire on every page of every property that loads this container (main site, `parents-voucher/`,
   `lovable_pages/mm-squad-trips/`) via the built-in "All Pages" trigger — no hostname restriction anywhere
-  in the container. Pixel *presence* is not the gap here; **conversion-type granularity is.**
+  in the container. Pixel _presence_ is not the gap here; **conversion-type granularity is.**
 - The existing `FBP Purchase Tag (…1798465) - V2`, `TikTok - All Events`, and `Google Ads - Purchase` tags
   already fire on `purchase` from **all three** properties, including `parents-voucher` (Parent Vouchers)
   and `mm-squad-trips` (ALL IN) — both push a literal `event: "purchase"` with a matching
@@ -39,37 +39,47 @@ DemandMore's email raised two complaints and listed 6 conversion types (All Purc
 Camp, Parent Vouchers, HGL Purchases, ALL IN — Meta/TikTok said to be top priority). Mapping his asks to
 what actually closes them:
 
-| Ask | Answered by |
-|---|---|
+| Ask                                                     | Answered by                                                                                                                                                                                  |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | "No unique GA4 Key Events, only one generic `purchase`" | §3's 5 new GA4 event tags (`purchase_hostel`, `purchase_tour`, `purchase_surf_camp`, `purchase_parent_voucher`, `purchase_all_in`) + starring each as a Key Event in GA4 Admin after publish |
-| "Ad platforms can't see/report per product line" | §3's named custom events (`Purchase_Hostel` etc.) on Meta/TikTok → Custom Conversions in each platform's Events Manager; §4's new Google Ads Conversion Actions |
-| "Is the Pixel even installed / firing on every page?" | Already true today, not a gap — see "Before you build" above (Meta + TikTok pixels already fire container-wide, including both standalone sites) |
-| HGL Purchases | **Deferred** — see [HGL Purchases (deferred, 6th type)](#hgl-purchases-deferred-6th-type) |
+| "Ad platforms can't see/report per product line"        | §3's named custom events (`Purchase_Hostel` etc.) on Meta/TikTok → Custom Conversions in each platform's Events Manager; §4's new Google Ads Conversion Actions                              |
+| "Is the Pixel even installed / firing on every page?"   | Already true today, not a gap — see "Before you build" above (Meta + TikTok pixels already fire container-wide, including both standalone sites)                                             |
+| HGL Purchases                                           | **Deferred** — see [HGL Purchases (deferred, 6th type)](#hgl-purchases-deferred-6th-type)                                                                                                    |
 
 ## Build progress
 
 Tracking per-conversion-type status so this can be picked up from any machine. Build order and rationale in
 full is in the (superseded, historical) plan; this table is the live source of truth.
 
-| Type | Trigger | GA4 tag | Meta tag | TikTok tag | Google Ads tag | Status |
-|---|---|---|---|---|---|---|
-| **ALL IN** | `Purchase - All In` built | `GA4 - Event - Purchase All In` built | `FBP Custom - Purchase All In` built | `TikTok Custom - Purchase All In` built | not started | **Built + verified in GTM Preview** (fired correctly, all parameter values resolved — `items`, `content_ids`/`contents` non-empty — alongside the existing aggregate "All Purchases" tags). Consent-gated (`ad_storage`/`ad_user_data`, `NEEDED`) on all 3 new tags. Google Ads tag blocked on §4. **Publish status: instructions given to submit this workspace as a version named "ALL In conversion tags — GA4/Meta/TikTok" — confirm on resume whether that was actually clicked before treating it as live.** |
-| **Parent Voucher** | not started | not started | not started | not started | not started | **Next up.** Same pattern as ALL IN (`conversion_type equals gift_voucher`), no new JS variables needed. |
-| **Hostel** | not started | not started | not started | not started | not started | Not started. Needs `Purchase Has Accommodation Item` JS variable first (§1). |
-| **Tour** | not started | not started | not started | not started | not started | Not started. Needs `Purchase Has Tour Item` JS variable + shared `Purchase Content IDs` variable (§1). |
-| **Surf Camp** | not started | not started | not started | not started | not started | Not started. Needs `Purchase Has Surf Camp Item` JS variable (§1). |
-| **HGL** | — | — | — | — | — | Deferred — not designed, no definition exists yet (see below). |
+| Type               | Trigger                   | GA4 tag                               | Meta tag                             | TikTok tag                              | Google Ads tag | Status                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------ | ------------------------- | ------------------------------------- | ------------------------------------ | --------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **ALL IN**         | `Purchase - All In` built | `GA4 - Event - Purchase All In` built | `FBP Custom - Purchase All In` built | `TikTok Custom - Purchase All In` built | not started    | **Live and verified against production, not just GTM Preview.** Container version 42 ("ALL In conversion tags — GA4/Meta/TikTok") is confirmed **published** — a same-shaped synthetic `purchase` push (`conversion_type: all_in`) against the real `madmonkeyhostels.com/all-in-trips` page produced, on inspection of the actual outbound network requests: a GA4 hit `en=purchase_all_in` to `tid=G-K27E7XLRBP` (the production property) alongside `en=purchase`, and a Meta hit `ev=Purchase_AllIn` alongside the standard `ev=Purchase`. `purchase_all_in` subsequently appeared in GA4 Realtime (count 1, 2026-08-13). TikTok pixel requests also fired but the custom event name isn't visible from the request URL alone (TikTok sends it in the POST body). Consent-gated (`ad_storage`/`ad_user_data`, `NEEDED`) confirmed correct on all 3 new tags via the v42 export. **Still open for ALL IN specifically:** (1) star `purchase_all_in` as a GA4 Key Event — it hasn't propagated from Realtime to the Admin Events list yet, check back; (2) create a Custom Conversion for `Purchase_AllIn` in Meta Events Manager; (3) confirm/create the equivalent in TikTok Events Manager; (4) Google Ads tag — nothing built yet, fully blocked on §4 (no Conversion Action exists). |
+| **Parent Voucher** | not started               | not started                           | not started                          | not started                             | not started    | **Next up.** Same pattern as ALL IN (`conversion_type equals gift_voucher`), no new JS variables needed.                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **Hostel**         | not started               | not started                           | not started                          | not started                             | not started    | Not started. Needs `Purchase Has Accommodation Item` JS variable first (§1).                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| **Tour**           | not started               | not started                           | not started                          | not started                             | not started    | Not started. Needs `Purchase Has Tour Item` JS variable + shared `Purchase Content IDs` variable (§1).                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **Surf Camp**      | not started               | not started                           | not started                          | not started                             | not started    | Not started. Needs `Purchase Has Surf Camp Item` JS variable (§1).                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **HGL**            | —                         | —                                     | —                                    | —                                       | —              | Deferred — not designed, no definition exists yet (see below).                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 **Other open items:**
+
 - **Google Ads Conversion Actions (§4)** — not created yet for any type. Blocking dependency for all 5
   Google Ads tags. Whoever has Google Ads admin needs to create them in Tools & Settings → Conversions.
-- **`Google Ads - Purchase` (existing aggregate tag) is still `consentStatus: NOT_SET`** — confirmed via
-  container export diff on 2026-08-12. Meta's and TikTok's aggregate tags (`FBP Purchase Tag`,
-  `FBP PageView Tag`, `TikTok - All Events`, `TikTok - All Pages`) were already fixed to `NEEDED` before
-  this build started (predates this session — see §5's "Existing tags" note for current state). Google Ads
-  is the one platform still open against M4.
-- **GA4 Key Events** — none of the 5 new event names have been starred yet in GA4 Admin (can't be, until
-  at least one has fired against a published version and appears in the Events list).
+- **M4 consent gating — nearly done, re-checked 2026-08-13 against container v42.** `NEEDED
+  [ad_storage, ad_user_data]` is confirmed correctly set on: Meta (`FBP Purchase Tag`, `FBP PageView Tag`),
+  TikTok (`- All Events`, `- All Pages`), Reddit (`- All Pages`, `- Purchase Event`), all 5 Sojern tags, and
+  **`UET Microsoft` (Bing)** — that last one wasn't confirmed fixed anywhere in this doc before. **The only
+  tag still `NOT_SET` is `Google Ads - Purchase`** — the one remaining M4 action item, not hypothetical; fix
+  it while someone's in Google Ads for §4 anyway. Also confirmed in v42: the old duplicate TikTok tag
+  (`---OLD--- TT-...-Web-Tag-Pixel_Event`) is `paused: true` — the archive/cleanup step from M4 is done.
+- **Regression found 2026-08-13: the standard `purchase` event is not currently starred as a GA4 Key
+  Event** (checked in GA4 Admin → Events → Recent events — its star is grey/hollow, unlike `add_to_cart`
+  and `begin_checkout` next to it). This contradicts audit finding C3, which claimed this was already fixed
+  and live. Being manually re-starred during this session; **confirm it's actually done before trusting
+  C3's "Live" status again** — don't just assume it holds.
+- **GA4 Key Events** — `purchase_all_in` has fired for real (confirmed in Realtime, 2026-08-13) but had not
+  yet appeared in the Admin → Events list to be starred as of this check — that list lags Realtime by an
+  unknown amount, not by design, just needs time. None of the other 4 new event names exist yet since their
+  tags aren't built.
 - **HGL Purchases (deferred, 6th type)** — DemandMore's email is the first place "HGL" appears anywhere;
   no `HGL` category, item, or `conversion_type` value exists in `frontend/` or the GTM container today. Do
   not invent a definition — wait for Kyle to clarify what HGL actually refers to before designing a trigger
@@ -107,14 +117,14 @@ includes surf camp bookings going forward (historical rows are unaffected — th
 
 ## 1. New/reused variables
 
-| Variable | Type | Value |
-|---|---|---|
-| `ecommerce.items`, `ecommerce.value`, `ecommerce.currency`, `ecommerce.transaction_id` | Data Layer Variable | already exist per §11.3 of the Implementation doc — reuse, don't recreate |
-| `conversion_type` | Data Layer Variable | **new** — key `conversion_type` (top-level, sibling of `ecommerce`, already pushed by the frontend on every `purchase` event) |
-| `Purchase Has Accommodation Item` | Custom JavaScript | `function(){var i={{ecommerce.items}};return Array.isArray(i)&&i.some(function(x){return x&&x.item_category==='Accommodation';});}` |
-| `Purchase Has Tour Item` | Custom JavaScript | same pattern, `item_category==='Tour'` |
-| `Purchase Has Surf Camp Item` | Custom JavaScript | same pattern, `item_category==='Surf Camp'` |
-| `Purchase Content IDs` | Custom JavaScript | `function(){var i={{ecommerce.items}}||[];return i.map(function(x){return x&&x.item_id;});}` — feeds Meta/TikTok `content_ids` |
+| Variable                                                                               | Type                | Value                                                                                                                               |
+| -------------------------------------------------------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --- | ------------------------------------------------------------------------------------- |
+| `ecommerce.items`, `ecommerce.value`, `ecommerce.currency`, `ecommerce.transaction_id` | Data Layer Variable | already exist per §11.3 of the Implementation doc — reuse, don't recreate                                                           |
+| `conversion_type`                                                                      | Data Layer Variable | **new** — key `conversion_type` (top-level, sibling of `ecommerce`, already pushed by the frontend on every `purchase` event)       |
+| `Purchase Has Accommodation Item`                                                      | Custom JavaScript   | `function(){var i={{ecommerce.items}};return Array.isArray(i)&&i.some(function(x){return x&&x.item_category==='Accommodation';});}` |
+| `Purchase Has Tour Item`                                                               | Custom JavaScript   | same pattern, `item_category==='Tour'`                                                                                              |
+| `Purchase Has Surf Camp Item`                                                          | Custom JavaScript   | same pattern, `item_category==='Surf Camp'`                                                                                         |
+| `Purchase Content IDs`                                                                 | Custom JavaScript   | `function(){var i={{ecommerce.items}}                                                                                               |     | [];return i.map(function(x){return x&&x.item_id;});}`— feeds Meta/TikTok`content_ids` |
 
 The three "Has X Item" variables exist because a single `purchase` event can carry multiple line items of
 mixed category (multi-room, mixed cart) — a plain Data Layer trigger can't inspect array contents, only a
@@ -125,14 +135,14 @@ already a single top-level value set once per event, so a direct equality trigge
 
 All are **Custom Event** triggers, base condition `event` equals `purchase`, plus one extra condition:
 
-| Trigger name | Extra condition |
-|---|---|
-| `Purchase - All` | *(none — this is the existing `purchase` trigger, reused as-is)* |
-| `Purchase - Hostel` | `{{Purchase Has Accommodation Item}}` equals `true` |
-| `Purchase - Tour` | `{{Purchase Has Tour Item}}` equals `true` |
-| `Purchase - Surf Camp` | `{{Purchase Has Surf Camp Item}}` equals `true` |
-| `Purchase - Parent Voucher` | `{{conversion_type}}` equals `gift_voucher` |
-| `Purchase - All In` | `{{conversion_type}}` equals `all_in` |
+| Trigger name                | Extra condition                                                  |
+| --------------------------- | ---------------------------------------------------------------- |
+| `Purchase - All`            | _(none — this is the existing `purchase` trigger, reused as-is)_ |
+| `Purchase - Hostel`         | `{{Purchase Has Accommodation Item}}` equals `true`              |
+| `Purchase - Tour`           | `{{Purchase Has Tour Item}}` equals `true`                       |
+| `Purchase - Surf Camp`      | `{{Purchase Has Surf Camp Item}}` equals `true`                  |
+| `Purchase - Parent Voucher` | `{{conversion_type}}` equals `gift_voucher`                      |
+| `Purchase - All In`         | `{{conversion_type}}` equals `all_in`                            |
 
 ## 3. Tag pattern — spelled out once for Hostel, repeat per type
 
@@ -207,13 +217,13 @@ because of the `gtmTracker.ts` mangling above — Meta isn't patched, so it keep
 name is what you type into GTM but must already be pre-stripped so it matches what TikTok actually receives.
 Parent Voucher and ALL IN aren't subject to the patch, so both platforms use the same underscored name.
 
-| Type | Trigger | GA4 Event Name | Meta custom event name | TikTok custom event name (as configured in GTM) |
-|---|---|---|---|---|
-| Hostel | `Purchase - Hostel` | `purchase_hostel` | `Purchase_Hostel` | `PurchaseHostel` |
-| Tour | `Purchase - Tour` | `purchase_tour` | `Purchase_Tour` | `PurchaseTour` |
-| Surf Camp | `Purchase - Surf Camp` | `purchase_surf_camp` | `Purchase_SurfCamp` | `PurchaseSurfCamp` |
-| Parent Voucher | `Purchase - Parent Voucher` | `purchase_parent_voucher` | `Purchase_ParentVoucher` | `Purchase_ParentVoucher` |
-| ALL IN | `Purchase - All In` | `purchase_all_in` | `Purchase_AllIn` | `Purchase_AllIn` (**built**) |
+| Type           | Trigger                     | GA4 Event Name            | Meta custom event name   | TikTok custom event name (as configured in GTM) |
+| -------------- | --------------------------- | ------------------------- | ------------------------ | ----------------------------------------------- |
+| Hostel         | `Purchase - Hostel`         | `purchase_hostel`         | `Purchase_Hostel`        | `PurchaseHostel`                                |
+| Tour           | `Purchase - Tour`           | `purchase_tour`           | `Purchase_Tour`          | `PurchaseTour`                                  |
+| Surf Camp      | `Purchase - Surf Camp`      | `purchase_surf_camp`      | `Purchase_SurfCamp`      | `PurchaseSurfCamp`                              |
+| Parent Voucher | `Purchase - Parent Voucher` | `purchase_parent_voucher` | `Purchase_ParentVoucher` | `Purchase_ParentVoucher`                        |
+| ALL IN         | `Purchase - All In`         | `purchase_all_in`         | `Purchase_AllIn`         | `Purchase_AllIn` (**built**)                    |
 
 ### Existing tags — no functional change, just note what they now mean
 
@@ -222,11 +232,12 @@ carries the `CompletePayment` mapping), and `Google Ads - Purchase` tags are alr
 "All Purchases" tag for their platform (see §2, `Purchase - All`). No changes needed to them beyond §5's
 consent-gating recommendation — just document them as the aggregate signal so nobody duplicates them.
 
-**Current consent-gating status (checked 2026-08-12 via container export diff):** Meta's and TikTok's
-aggregate tags (`FBP Purchase Tag`, `FBP PageView Tag`, `TikTok - All Events`, `TikTok - All Pages`) have
-already been flipped from `NOT_SET` to `NEEDED [ad_storage, ad_user_data]`. **`Google Ads - Purchase` is
-still `NOT_SET`** — this is the one remaining action item from M4, not hypothetical; fix it while someone's
-in Google Ads for §4 anyway.
+**Current consent-gating status (re-checked 2026-08-13 via container v42 export):** `NEEDED
+[ad_storage, ad_user_data]` is set on Meta's and TikTok's aggregate tags (`FBP Purchase Tag`,
+`FBP PageView Tag`, `TikTok - All Events`, `TikTok - All Pages`), plus Reddit, all 5 Sojern tags, and
+`UET Microsoft` — see "Build progress" → "Other open items" above for the full breakdown. **`Google Ads - Purchase`
+is still `NOT_SET`** — this is the one remaining action item from M4, not hypothetical; fix it while
+someone's in Google Ads for §4 anyway.
 
 ### ALL IN — known limitation: balance charge never reaches these tags
 
@@ -266,7 +277,7 @@ Set, on all 15 new advertising tags (Meta ×5, TikTok ×5, Google Ads ×5):
 This is the exact template already documented in
 [`M4_AD_PIXEL_CONSENT.md`](../../frontend/docs/analytics/M4_AD_PIXEL_CONSENT.md). Note: `Reddit - All Pages`
 is the closest existing example of a gated tag, but its live config only sets `ad_storage` —
-`ad_user_data` is M4's own recommended *addition*, not something already present on Reddit's tag today.
+`ad_user_data` is M4's own recommended _addition_, not something already present on Reddit's tag today.
 Don't copy Reddit's tag as-is; apply the full two-item list above to every new tag in this spec. The 5 new
 GA4 event tags should follow GA4's existing `analytics_storage` consent pattern, same as the rest of the
 GA4 tags in the container.
@@ -303,6 +314,7 @@ blocker for this build since `conversion_type` already does the job at the event
   they appear as Key Events in GA4 Admin.
 
 **Two caveats about verification claims elsewhere in the repo, flagged (not fixed) here:**
+
 - **No test runner exists in this repo.** There are 13 `*.test.ts` files — including the one covering the
   Surf Camp `item_category` change this build depends on — but no Jest dependency, config, script, or CI
   step actually executes them. Don't treat "there's a test for it" as evidence of coverage; the only real
@@ -314,10 +326,12 @@ blocker for this build since `conversion_type` already does the job at the event
 ## Reference
 
 Container export baseline in the repo: [`frontend/docs/analytics/gtm/GTM-KC78NFHD_workspace48.json`](../../frontend/docs/analytics/gtm/GTM-KC78NFHD_workspace48.json)
-— **stale as of this build.** A newer export (`workspace52`, pulled 2026-08-12, containing the consent-gating
-fixes and reflecting the state right before the ALL IN tags were built) was compared against it in a scratch
-directory that does not persist across sessions/machines. If you need to diff current-vs-baseline again,
-re-export the live workspace from GTM rather than looking for that file — it won't be there.
+— **stale as of this build.** Two newer exports have been reviewed since but neither persists in the repo:
+`workspace52` (pulled 2026-08-12, consent-gating fixes, state right before ALL IN was built) and container
+**version 42** (`GTM-KC78NFHD_v42`, shared 2026-08-13, exportTime `2026-08-13 09:35:10` — this is the one
+"ALL IN — live and verified" above is based on; it's a specific published version export, confirming v42 is
+the live version, not just a saved one). If you need to diff current-vs-this-doc again, re-export the live
+workspace/version from GTM rather than looking for either file in the repo — neither is there.
 
 Full architecture: [GA4-GTM-IMPLEMENTATION.md](./GA4-GTM-IMPLEMENTATION.md).
 Code change: `ecommerceDataLayer.ts`, `cartContext.tsx`, `pages/tours-events/[slug].tsx`, commit `2aa253ae`,
