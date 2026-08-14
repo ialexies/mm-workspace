@@ -11,6 +11,14 @@
     {
       "name": "Backend",
       "path": "./backend"
+    },
+    {
+      "name": "mm-squad-trips",
+      "path": "./lovable_pages/mm-squad-trips"
+    },
+    {
+      "name": "parents-voucher",
+      "path": "./parents-voucher"
     }
   ],
   "settings": {
@@ -19,7 +27,9 @@
     "git.scanRepositories": [
       ".",
       "./frontend",
-      "./backend"
+      "./backend",
+      "./lovable_pages/mm-squad-trips",
+      "./parents-voucher"
     ],
     "files.watcherExclude": {
       "**/node_modules/**": true,
