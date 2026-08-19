@@ -67,6 +67,58 @@ The most urgent finding is a duplicate `purchase` event that causes Google Ads t
 
 ---
 
+## Live Data Re-Audit (2026-08-17)
+
+Cross-checked this report's claims against live GA4 production data (property `480299801`, via Porter Metrics MCP) and production (`v3-main`) vs. `new-v3-staging` git history. Found one new critical, currently-active bug not covered by the original 23. Punch list below, ranked by urgency.
+
+### 🔴 Fix now — Dev
+
+| # | Bug | Detail |
+|---|---|---|
+| **N1** | **`add_to_cart` / `remove_from_cart` dead in production since 2026-07-22** | Live GA4 data: both events fired normally through 2026-07-21 (~90–460/day for `add_to_cart`, ~15/day for `remove_from_cart`), then dropped to **exactly zero, same day, both events** — `view_item`/`view_cart`/`begin_checkout`/`purchase` kept firing normally throughout, so this isn't a general tracking outage. **Root cause:** commit `9f9ee4aa` (2026-07-16, merged to `v3-main` 2026-07-21) — the fix that consolidated `add_to_cart`/`remove_from_cart` firing into `cartContext.tsx`'s shared handler and removed the old direct pushes from `CardRoomComponent.tsx` and the tours flow. The shared handler is gated behind `ENABLE_ANALYTICS = process.env.NEXT_PUBLIC_ENABLE_CART_ANALYTICS === "true"` — a flag referenced nowhere else in the repo (not in `.env.production.example`, `.env.staging.example`, or anywhere) and evidently never set to `"true"` in any real environment. **Fix:** remove the `ENABLE_ANALYTICS` gate from both `gtmPushEvent` calls in `contexts/cartContext.tsx` — they should fire unconditionally like `purchase`/`begin_checkout` already do. **Blocks C2** — no point wiring `add_to_cart` into Google Ads goals while GA4 itself has sent zero of them for weeks. |
+| **N2** | **L3 is worse than documented — TikTok twin bypasses GTM consent entirely** | Confirmed on `new-v3-staging` (not just prod): `utils/gtmTracker.ts` calls `window.ttq.track()` directly and unconditionally on *every* `gtmPushEvent` call — not just the 6 mapped ecommerce events the original L3 finding assumed — with **no consent check anywhere in the file**. Fix needs two parts: (a) only build/track the TikTok twin for the mapped ecommerce events per the original L3 fix, and (b) gate the direct `ttq.track()` call behind `Cookiebot.consent.marketing`. Without (b), **M4's GTM-side consent fix is moot** — this code path sends to TikTok regardless of what the GTM tag's consent settings say. |
+
+### 🟡 Deploy what's already fixed
+
+| # | Action | Detail |
+|---|---|---|
+| **N3** | **Ship `new-v3-staging` → `v3-main`** | 34 commits ahead of production as of 2026-08-17, including several items this report already marked "✅ Merged, pending prod deploy": **H1** (SPA page_view), **H2** (tours `add_to_cart` over-firing), **H4** (empty `view_item` values), **M1** (email-as-`user_id` PII), **M2** (Clarity consent gating), **L2** (debug code), **L4** (`sign_up` for OAuth) — plus the `/booking/thanks` white-screen fix, the paid-ad attribution loop, and the Enhanced Conversions foundation. None of it helps anyone until it's live. |
+
+### 🟠 Needs Google Ads / GTM UI access — not fixable in code
+
+| # | Issue | Note |
+|---|---|---|
+| **C2** | Add to cart / Begin checkout goals have 0 conversion actions in Ads | Do this **after N1** — importing a dead event fixes nothing |
+| **M4** | Ad pixels (TikTok/Meta/Sojern/Reddit) fire without consent checks | Do alongside **N2** — GTM-side consent gating alone won't stop the direct `ttq.track()` path |
+| **H7** | iOS/Android purchase conversion actions have swapped Firebase event labels | Quick fix in Ads UI |
+| **L6** | 36 legacy property-specific Ads conversion actions need archiving | Quick fix in Ads UI |
+
+### ✅ Re-verified accurate against live data
+
+- **C1** (duplicate `purchase`) — confirmed fixed: `transactions` = `ecommercePurchases` = 1,635 exactly, last 30 days, no duplication.
+- **C3** (`purchase` not a key event) — confirmed: `purchase` now shows as a GA4 key event in production.
+- **C5** (`calendar_booking_search_submit` dead key event) — confirmed still never fires, but this is expected: the report resolved it via Option A (un-star it, `purchase` is the key event instead), not Option B (implement it). No further action needed.
+
+*Live-data re-audit conducted 2026-08-17 via Porter Metrics (GA4) and BigQuery MCP connectors, cross-referenced against `git log` on `v3-main` and `new-v3-staging`.*
+
+---
+
+## Live Session Findings (2026-08-19)
+
+Found and fixed one new critical bug not covered by the original 23 or the Aug 17 re-audit — surfaced live in Google Ads' own "Transaction IDs needing attention" diagnostic (account AW-10846937348, 20 pages flagged, all invalid IDs prefixed `cs_live_…`/`cs_test_…`).
+
+### 🔴 Found & fixed — Dev
+
+| # | Bug | Detail |
+|---|---|---|
+| **T1** | **Purchase `transaction_id` exceeds Google Ads' 64-char limit** | Root cause: `pages/booking/thanks.tsx`'s `paymentIntentId` fallback (lines ~267-278) — when `payment_intent_id` is absent from the thanks-page URL (the hosted/embedded Stripe Checkout return path), it falls back to the raw Stripe **Checkout Session ID** (`session_id`, ~66 chars), which then flowed straight through to the GA4/Ads `transaction_id`. Google Ads' 64-char cap rejects it, breaking conversion dedup for affected purchases. Introduced in a single commit, `882a812a` (2026-07-28) — confirmed via `git log -S`; an earlier estimate of "Oct 2025" for this commit was wrong and has been corrected. **Fix:** added `resolveTransactionId()` to `utils/ecommerceDataLayer.ts` — prefers the PaymentIntent id when it's ≤64 chars (unchanged for the common case), falls back to the (always-short, `crypto.randomUUID()`-generated) cart id when the primary id is missing or too long, truncates only as a last resort. |
+
+**Verification:** 6 new unit tests (`utils/ecommerceDataLayer.test.ts`, `resolveTransactionId` describe block) covering the short/long/missing/whitespace-only primary and fallback cases; a new Playwright e2e spec (`e2e/tests/booking-thanks-transaction-id.spec.ts`) exercising the real `/booking/thanks` code path against a mocked confirmation response, confirming both the broken-case fallback and the no-regression common case; and a live end-to-end test via Google Tag Assistant against a real staging booking, confirming the outgoing `purchase` event's `ecommerce.transaction_id` came through as the 36-char cart UUID (well under the 64-char limit) rather than the raw session id.
+
+**Status:** fixed on `hotfix/ga4-transaction-id-too-long` (branched off `v3-main`; confirmed no merge conflicts with `new-v3-staging`, which never touched the affected lines). Pending PR into `v3-main`, to be cherry-picked into `new-v3-staging` after merge. This fixes future purchases only — Google Ads does not retroactively reprocess the already-flagged historical transaction IDs.
+
+---
+
 ## Critical — Money / Bidding
 
 ### C1 · Duplicate `purchase` event doubles Google Ads conversions
