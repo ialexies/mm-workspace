@@ -1,7 +1,8 @@
 ﻿# Mad Monkey Hostels — GA4, GTM & Google Ads (Complete Reference)
 
 > **Single-file bundle for LLM context.** Combines the analytics index, May 2026 audit report, implementation guide, roadmap & reporting, PR checklist, and GTM changelog.  
-> **Generated:** May 2026 · **Last resynced:** August 2026 (Part 1 + Part 3 §19 — standalone landing pages / shared-analytics-account policy) · **Sources:** `docs/analytics/*`, `GA4-GTM-AUDIT-REPORT.md`  
+> **Generated:** May 2026 · **Last resynced:** 2026-08-20 (Part 1 + Part 3 §19 — standalone landing pages / shared-analytics-account policy; Part 3 §3.5/§10.1/§10.4/§13.1/§15 and Part 4 — MCP live verification of C2/C4/M4 status) · **Sources:** `docs/analytics/*`, `GA4-GTM-AUDIT-REPORT.md`  
+> **Part 2 is NOT resynced past May 2026** — see the note at the top of Part 2 and read `GA4-GTM-AUDIT-REPORT.md` directly for current fix status.  
 > **Size:** ~125 KB · ~2,450 lines · GTM `GTM-KC78NFHD` · GA4 `G-K27E7XLRBP` · Google Ads `697-007-4125`
 
 ### How to use with an LLM
@@ -96,6 +97,7 @@ Marketing sometimes ships a landing page as its own repo/hosting (e.g. Lovable-b
 
 <a id="part-2"></a>
 
+> **Note (2026-08-20):** Part 2 below is the original May 2026 audit as last resynced — it predates all of the August 2026 fix-status updates (Fix Status table, Live Data Re-Audit, Live Session Findings, Full Platform Health Check, and the 2026-08-20 MCP Live Verification) that now live only in the standalone [`GA4-GTM-AUDIT-REPORT.md`](../../GA4-GTM-AUDIT-REPORT.md). Treat that file, not this section, as the source of truth for current fix status on C1–C5/H1–H7/M1–M4/L1–L6 plus N1–N3/T1. The M4 and C2/C4 status corrections from the 2026-08-20 pass are reflected in Part 3/4 of this bundle below, since those sections were resynced.
 
 # GA4 & GTM Analytics Audit Report
 **Mad Monkey Hostels** · May 2026  
@@ -1124,10 +1126,10 @@ The Cookiebot CMP tag in GTM has:
 | GA4 Configuration | `analytics_storage` |
 | GA4 Event tags | `analytics_storage` |
 | Google Ads Conversion | `ad_storage` + `ad_user_data` |
-| TikTok Pixel | NOT_SET (fires regardless — see §15 M4) |
-| Facebook Pixel | NOT_SET (fires regardless — see §15 M4) |
-| Sojern | NOT_SET (fires regardless — see §15 M4) |
-| Reddit | NOT_SET (fires regardless — see §15 M4) |
+| TikTok Pixel | `needed` (`ad_storage`+`ad_user_data`) as of 2026-08-20 GTM API pull — reverses the original "NOT_SET" finding; publish status to live container unconfirmed (see §15 M4) |
+| Facebook Pixel | `needed` (`ad_storage`+`ad_user_data`) as of 2026-08-20 GTM API pull — same caveat (see §15 M4) |
+| Sojern | `needed` (`ad_storage`+`ad_user_data`) as of 2026-08-20 GTM API pull — same caveat (see §15 M4) |
+| Reddit | `needed` (`ad_storage`+`ad_user_data`) as of 2026-08-20 GTM API pull — same caveat (see §15 M4) |
 | Microsoft Clarity | Not in GTM — loaded directly without consent gate (see §15 M2) |
 
 ---
@@ -1922,7 +1924,7 @@ useEffect(() => {
 
 **Pixel ID:** `D095O0BC77U0QQJ07KTG`  
 **Integration method:** GTM tag + direct `ttq.track()` fallback in `gtmTracker.ts`  
-**Consent check:** None — `consentSettings: NOT_SET` in GTM (§15 M4)
+**Consent check (GTM tag):** `consentStatus: "needed"` (`ad_storage`+`ad_user_data`) as of the 2026-08-20 GTM workspace pull — reverses the original "NOT_SET" audit finding; not yet confirmed published to the live container (§15 M4). The direct `ttq.track()` fallback in step 4 of `gtmPushEvent()` bypasses GTM's consent gating entirely and has no consent check of its own — that part of the original finding still stands (§15 L3/N2).
 
 The TikTok pixel receives events two ways:
 1. Via GTM tag listening for TikTok-named events in `dataLayer` (e.g. `ViewContent`, `AddToCart`)
@@ -1984,7 +1986,7 @@ Tapfiliate is not connected to GA4 or GTM. It operates independently.
 ### 10.4 Sojern
 
 **Integration method:** GTM tag with DOM polling  
-**Consent check:** None — `consentSettings: NOT_SET` in GTM (§15 M4)
+**Consent check:** `consentStatus: "needed"` (`ad_storage`+`ad_user_data`) as of the 2026-08-20 GTM workspace pull — reverses the original "NOT_SET" audit finding; not yet confirmed published to the live container (§15 M4)
 
 Sojern uses a DOM polling approach in GTM — it reads specific DOM elements to extract booking data rather than relying on `dataLayer` variables. The GTM tag includes a `setInterval` that repeatedly checks for DOM elements.
 
@@ -2114,16 +2116,16 @@ window.location.hostname === 'localhost'  →  G-27GXNDKYWW (development)
 ## 13. Google Ads Integration
 
 **Account:** 697-007-4125  
-**Campaigns:** 4,708 active campaigns
+**Campaigns:** 4,708 (account-default goal scope, excludes removed campaigns) of 4,921 total campaigns in the account — only 16 are `ENABLED` and only 7 of those are actually `serving_status: SERVING` (confirmed via Ads API 2026-08-20)
 
 ### 13.1 Conversion goals
 
 | Goal | Primary conversion actions | Status |
 |---|---|---|
-| Purchase | All Purchase | Active, Count: Every |
-| Add to cart | (none assigned) | **Misconfigured (§15 C2)** |
-| Begin checkout | (none assigned) | **Misconfigured (§15 C2)** |
-| Other | BCY_Booking, PP_Booking, Wheelofpopups_lead | **Dead signals (§15 C4)** |
+| Purchase | All Purchase | Active, Count: Every, 4,704 of 4,708 |
+| Add to cart | Account-default, 27 of 4,708 campaigns | **Fixed 2026-08-19 — Active (§15 C2)**; 6 `ENDED` campaigns with customized goal sets still uncovered, moot since they aren't serving |
+| Begin checkout | Account-default, 27 of 4,708 campaigns | **Fixed 2026-08-19 — Active, now matches Add to cart (§15 C2)** |
+| Other | Wheelofpopups no longer Primary; BCY_Booking/PP_Booking no longer exist in the account | **Fixed — confirmed via Ads API 2026-08-20 (§15 C4)** |
 
 ### 13.2 All Purchase conversion action
 
@@ -2205,11 +2207,11 @@ A full audit was conducted in May 2026. The following issues were identified. Se
 
 | ID | Issue | Location |
 |---|---|---|
-| C1 | Duplicate `purchase` event doubles Google Ads conversions | `pages/booking/payment.tsx:86` |
-| C2 | Add to cart and Begin checkout goals have 0 actions in Google Ads | Google Ads |
-| C3 | `purchase` not marked as GA4 key event | GA4 Admin |
-| C4 | Dead UA sources (BCY/PP Booking) + Wheelofpopups as Primary in 32 campaigns | Google Ads |
-| C5 | `calendar_booking_search_submit` key event never fires — unimplemented | Dev / GA4 |
+| C1 | Duplicate `purchase` event doubles Google Ads conversions — **✅ Fixed, live in production** | `pages/booking/payment.tsx:86` |
+| C2 | Add to cart and Begin checkout goals have 0 actions in Google Ads — **✅ Fixed 2026-08-19**, both Active at 27/4,708 account-default | Google Ads |
+| C3 | `purchase` not marked as GA4 key event — **✅ Fixed, confirmed live** | GA4 Admin |
+| C4 | Dead UA sources (BCY/PP Booking) + Wheelofpopups as Primary in 32 campaigns — **✅ Fixed**, confirmed via Ads API 2026-08-20 | Google Ads |
+| C5 | `calendar_booking_search_submit` key event never fires — unimplemented; resolved via un-starring, `purchase` is the key event instead | Dev / GA4 |
 
 ### High — fix in Sprint 1
 
@@ -2230,7 +2232,7 @@ A full audit was conducted in May 2026. The following issues were identified. Se
 | M1 | Email sent as `user_id` — PII in GA4 and Google Ads | Auth files |
 | M2 | Clarity loads without Cookiebot consent | `_app.tsx:958` |
 | M3 | GTM consent only denies UK — not full EEA | GTM container |
-| M4 | TikTok/FB/Sojern/Reddit pixels have no consent check | GTM container |
+| M4 | TikTok/FB/Sojern/Reddit pixels have no consent check — **🟡 GTM workspace now shows `consentStatus: "needed"` on these tags (2026-08-20 API pull); publish status to live container unconfirmed, direct `ttq.track()` fallback still bypasses it regardless (see L3/N2)** | GTM container |
 
 ### Low — technical debt
 
@@ -2888,14 +2890,14 @@ This document captures recommended follow-ups after the May 2026 GA4/GTM audit: 
 
 ## 1. Priority summary
 
-| Priority | Item | Owner | Est. effort |
-|---|---|---|---|
-| P0 | Remove duplicate `purchase` from `payment.tsx` (audit C1) | Dev | 1 hr |
-| P0 | Mark `purchase` as GA4 key event (C3) | GA4 admin | 5 min |
-| P0 | Wire `add_to_cart` + `begin_checkout` in Google Ads goals (C2) | Ads | 20 min |
-| P0 | Demote dead UA + Wheelofpopups Primary actions (C4) | Ads | 15 min |
-| P0 | Stop sending email as `user_id` (M1) | Dev | 1 hr |
-| P1 | Sprint 1 audit items (H1–H7, M2–M4) | Dev / GTM / GA4 / Ads | ~1–2 days |
+| Priority | Item | Owner | Est. effort | Status |
+|---|---|---|---|---|
+| P0 | Remove duplicate `purchase` from `payment.tsx` (audit C1) | Dev | 1 hr | ✅ Live |
+| P0 | Mark `purchase` as GA4 key event (C3) | GA4 admin | 5 min | ✅ Live |
+| P0 | Wire `add_to_cart` + `begin_checkout` in Google Ads goals (C2) | Ads | 20 min | ✅ Fixed 2026-08-19 (27/4,708 account-default, both Active) |
+| P0 | Demote dead UA + Wheelofpopups Primary actions (C4) | Ads | 15 min | ✅ Fixed, confirmed via Ads API 2026-08-20 |
+| P0 | Stop sending email as `user_id` (M1) | Dev | 1 hr | ✅ Live 2026-08-19 |
+| P1 | Sprint 1 audit items (H1–H7, M2–M4) | Dev / GTM / GA4 / Ads | ~1–2 days | Mostly ✅ Live; **M4 needs re-check** — GTM workspace now shows `consentStatus: "needed"` on TikTok/FB/Sojern/Reddit tags (2026-08-20), publish status unconfirmed; H7/L6 still open (Ads UI) |
 | P2 | Documentation process + GTM in git (this doc §2) | Engineering | ~2 hrs |
 | P2 | Weekly reporting ritual (this doc §10) | Marketing / ops | Ongoing |
 | P3 | Server-side purchase, E2E smoke, BigQuery | Engineering | Project-sized |
@@ -3108,7 +3110,7 @@ Only map the six ecommerce events in `gtmTracker.ts`; see audit appendix A.8.
 | Email as `user_id` | M1 | UID only; request GA4 data deletion if emails were sent |
 | Clarity without consent | M2 | Gate on `Cookiebot.consent.statistics` |
 | EEA consent defaults | M3 | Expand denied-by-default regions in GTM Cookiebot tag |
-| Ad pixels without consent | M4 | `ad_storage` required on TikTok, FB, Sojern, Reddit tags |
+| Ad pixels without consent | M4 | `ad_storage` required on TikTok, FB, Sojern, Reddit tags — GTM workspace pull (2026-08-20) shows this is now configured (`consentStatus: "needed"`); **confirm it's published to the live container**, and note the direct `ttq.track()` fallback in `gtmTracker.ts` bypasses it regardless (L3/N2) |
 
 Document consent state in privacy policy / DPA reviews when changing tags.
 
@@ -3131,7 +3133,7 @@ Document consent state in privacy policy / DPA reviews when changing tags.
 
 If you can only do one coordinated pass after Week 1 fixes:
 
-1. Execute **Week 1 audit fixes** (C1–C4, M1)
+1. Execute **Week 1 audit fixes** (C1–C4, M1) — ✅ done as of 2026-08-20
 2. Add **PR analytics checklist** (§8) to frontend PR template
 3. **Commit GTM export** to `docs/analytics/gtm/` + `CHANGELOG.md`
 4. **Link** `docs/analytics/` from `ARCHITECTURE.md`

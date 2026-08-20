@@ -22,33 +22,33 @@ The most urgent finding is a duplicate `purchase` event that causes Google Ads t
 
 ---
 
-## Fix Status (updated 2026-07-01)
+## Fix Status (updated 2026-08-19 — post PR #1064 deploy verification)
 
 **Legend:** ✅ Live (in production) · 🟡 Fixed in branch, pending prod deploy (`bugfix/sp12-analytics-gtm-fixes` + earlier) · ⚙️ GA4/GTM/Ads config done · ⛔ Blocked on admin access · ⬜ Not started · ⏭️ Deferred
 
 | # | Issue | Status | Notes |
 |---|---|---|---|
 | C1 | Duplicate `purchase` | ✅ Live | `payment.tsx` no longer fires it |
-| C2 | Mid-funnel goals 0 actions | ⛔ Blocked | `add_to_cart`/`begin_checkout` are GA4 key events; only the **app** versions imported. Need the **web** property `G-K27E7XLRBP` conversion import enabled on the GA4↔Ads link (Data Manager → Manage) — no self-serve access. *(Your side — Ads)* |
+| C2 | Mid-funnel goals 0 actions | 🟡 Partially fixed (2026-08-19) | Original "0 conversion actions" framing was outdated — web actions exist and import correctly. Real issue was scope: only 16/4708 campaigns are actually ENABLED, and `begin_checkout` had zero campaigns using it anywhere (account-default was Off). Fixed the account-default toggle today (now 27/4708, matching `add_to_cart`) — but 6 of the 16 live campaigns use customized goal sets untouched by that fix, and Ads still shows 0 recorded conversions post-fix (GA4 confirms events are firing; likely import lag). See **Live Session Findings (2026-08-19)** below. *(Your side — Ads)* |
 | C3 | `purchase` not key event | ✅ Live | Confirmed key event in GA4 |
 | C4 | Dead UA/popup Primary | ✅ Live | Removed in Ads UI |
 | C5 | Dead `calendar_booking_search_submit` | ✅ Resolved | Confirmed by team (fixed last week). `purchase` is the working key event; the dead starred event was removed |
-| H1 | SPA `page_view` | ✅ Merged | Code in `new-v3-staging` + GTM tag **published** + GA4 EM history-changes off; verified on staging. Pending prod deploy. See `frontend/docs/analytics/SPA_PAGE_VIEW_H1.md` |
-| H2 | `add_to_cart` over-fires | ✅ Merged | Tours fire once on tour-add (qty = guests); rooms verified correct. In `new-v3-staging`; pending prod deploy |
+| H1 | SPA `page_view` | ✅ Live (2026-08-19) | Shipped to `v3-main` via PR #1064. Verified on `v3-main`: `routeChangeComplete` handler wired in `_app.tsx`. See `frontend/docs/analytics/SPA_PAGE_VIEW_H1.md` |
+| H2 | `add_to_cart` over-fires | ✅ Live (2026-08-19) | Shipped to `v3-main` via PR #1064. Resolved by removing the `add_to_cart` push from `ToursShoppingCart.tsx` entirely — it no longer fires from there; `cartContext.tsx`'s shared handler is now the sole source |
 | H3 | `begin_checkout` 2–3× | ✅ Live | `markCheckoutEventOnce` dedup — verified on staging: exactly **1** `begin_checkout` per checkout. All 3 sources share the dedup key |
-| H4 | `view_item` empty prices | ✅ Merged | Real starting price sent. In `new-v3-staging`; pending prod deploy |
+| H4 | `view_item` empty prices | ✅ Live (2026-08-19) | Shipped to `v3-main` via PR #1064. Verified on `v3-main`: `destination/[slug].tsx` now computes real `startingPrice` instead of empty strings |
 | H5 | `app_page_location` not registered | ✅ | GA4 custom dimension registered (Event scope) + GTM `app_page_location` param wired & published. App emission verified on-device. Populates from registration onward |
 | H6 | `original_value` text not metric | ✅ | Registered as a custom **metric** (Event scope, Currency) on the prod property. Live purchase hit verified numeric (`epn.original_value`). Verifier: `verify-original-value.mjs` |
 | H7 | Swapped iOS/Android labels | ⬜ | *Your side — Ads UI* |
-| M1 | Email as `user_id` (PII) | ✅ Merged | All auth paths send Firebase UID; verified on staging. In `new-v3-staging`; pending prod deploy |
-| M2 | Clarity without consent | ✅ Merged | Gated behind `Cookiebot.consent.statistics`; before/after verified on localhost. In `new-v3-staging`; pending prod deploy. Grant-path to confirm on staging |
+| M1 | Email as `user_id` (PII) | ✅ Live (2026-08-19) | Shipped to `v3-main` via PR #1064. Verified on `v3-main`: `LoginPage.tsx` uses `result.user.uid`; `callback.tsx` uses `unified.user.uid` in all 5 spots, no `.email \|\|` pattern anywhere. PII exposure is closed |
+| M2 | Clarity without consent | ✅ Live (2026-08-19) | Shipped to `v3-main` via PR #1064. Verified on `v3-main`: gated behind `Cookiebot.consent.statistics` with a `__clarityLoaded` guard |
 | M3 | GTM consent UK-only | ✅ | Fixed by team (last week) — consent defaults extended beyond UK to the EEA. Not independently re-verified |
-| M4 | Ad pixels without consent | ❌ Not fixed | **Live staging check (2026-07-03) — with consent DENIED, these still fired: TikTok (22), Bing/UET (8), Meta (5), Reddit (2), Tapfiliate (1).** Container audit: 13 non-Google pixel tags have `consentStatus: NOT_SET`; only `Reddit - All Pages` is gated (= the template). Runbook ready. *Your side — GTM UI.* Verifier: `playwright-verify/verify-adpixel-consent-staging.mjs` |
-| L1 | Hardcoded GTM/Clarity IDs | ✅ Merged | → `NEXT_PUBLIC_GTM_ID` / `NEXT_PUBLIC_CLARITY_ID` (fallback to current). In `new-v3-staging` |
-| L2 | Prod debug code shipped | ✅ Merged | GTM debug + `testGTM` + Cookiebot monitor guarded behind `NODE_ENV`; stray render log removed. In `new-v3-staging` (PR #961); pending prod deploy |
-| L3 | TikTok twin doubles events | ⬜ | Code — `gtmTracker.ts` pushes a TikTok twin for every event |
-| L4 | `sign_up` missing for OAuth new users | ✅ Merged | Google/Apple OAuth fire `sign_up` (UID) when `getAdditionalUserInfo().isNewUser`. In `new-v3-staging`; pending prod deploy |
-| L5 | Untyped analytics globals | ✅ Merged | `ttq`/`Cookiebot`/`clarity`/etc. typed in `global.d.ts`; removed `(window as any)`. In `new-v3-staging` |
+| M4 | Ad pixels without consent | 🟡 Re-check needed (2026-08-20) | **Live staging check (2026-07-03) — with consent DENIED, these still fired: TikTok (22), Bing/UET (8), Meta (5), Reddit (2), Tapfiliate (1).** That test predates the correction below. **GTM API re-pull (2026-08-20, via `google-marketing` MCP)** of the live workspace now shows `TikTok - All Events` (pixel `D095O0BC77U0QQJ07KTG`) + 4 more TikTok tags, all 5 FBP/Facebook tags, all 5 Sojern tags, both Reddit tags, and `UET Microsoft` (Bing) with `consentStatus: "needed"` requiring `ad_storage`+`ad_user_data` — contradicting the original "13 tags NOT_SET" container audit. Only `Tapfiliate - All pages` still shows `notSet`. **Caveat:** this reflects the GTM Default Workspace (draft state), not a confirmed published/live container version — re-run `verify-adpixel-consent-staging.mjs` against current staging to see if browser behavior now matches. *Your side — GTM UI verification.* Verifier: `playwright-verify/verify-adpixel-consent-staging.mjs` |
+| L1 | Hardcoded GTM/Clarity IDs | ✅ Live (2026-08-19) | Shipped to `v3-main` via PR #1064. Verified on `v3-main`: `GTM.tsx` reads `NEXT_PUBLIC_GTM_ID` with fallback to `GTM-KC78NFHD` |
+| L2 | Prod debug code shipped | ✅ Live (2026-08-19) | Shipped to `v3-main` via PR #1064. Verified on `v3-main`: `window.testGTM` guarded behind `process.env.NODE_ENV !== "production"` |
+| L3 | TikTok twin doubles events | ⬜ | Code — `gtmTracker.ts` pushes a TikTok twin for every event. Not fixed on `v3-main` |
+| L4 | `sign_up` missing for OAuth new users | ✅ Live (2026-08-19) | Shipped to `v3-main` via PR #1064. Verified on `v3-main`: `getAdditionalUserInfo(...)?.isNewUser` check present, both OAuth spots in `callback.tsx` |
+| L5 | Untyped analytics globals | ❌ Not actually done | **Correction (2026-08-19):** previous "✅ Merged" status was inaccurate — verified `types/global.d.ts` on both `v3-main` and `new-v3-staging`; neither has `dataLayer`, `ttq`, `Cookiebot`, `tap`, or `testGTM` declarations. This fix was never actually implemented on either branch, despite the doc's prior claim. Still needs to be written — see **Technical Appendix A.9** for the target implementation |
 | L6 | 36 legacy Ads conversion actions | ⬜ | *Your side — Ads UI* (archive) |
 
 **New work this sprint (beyond the original 23):**
@@ -67,6 +67,20 @@ The most urgent finding is a duplicate `purchase` event that causes Google Ads t
 
 ---
 
+## Deploy Verification (2026-08-19, post-PR #1064)
+
+**PR #1064 (`new-v3-staging` → `v3-main`) merged 2026-08-19 11:10 SGT** — this is the deploy **N3** below was waiting on. Several rows in the Fix Status table above were still marked "pending prod deploy" after this merge landed; verified each directly against `v3-main` source (not just the PR diff) and corrected the table. Net result:
+
+**Flipped from "pending" to ✅ Live:** H1 (SPA page_view), H2 (tours add_to_cart over-fire — resolved by removing the push from `ToursShoppingCart.tsx` rather than patching it in place), H4 (empty `view_item` values), M1 (PII — email as `user_id`), M2 (Clarity consent gate), L1 (env-driven GTM/Clarity IDs), L2 (debug code guarded), L4 (`sign_up` for OAuth new users). Also confirmed **N1** (`add_to_cart`/`remove_from_cart` unconditional firing) is live — `cartContext.tsx` comments explicitly state "Fires unconditionally (not gated by `ENABLE_ANALYTICS`)".
+
+**Correction, not just a status flip:** **L5** (typed analytics window globals) was previously marked "✅ Merged" but is **not actually implemented on either branch** — `types/global.d.ts` has no `dataLayer`/`ttq`/`Cookiebot`/`tap`/`testGTM` declarations on `v3-main` or `new-v3-staging`. The prior status was inaccurate, not just stale.
+
+**Confirmed still genuinely open (not code — no deploy fixes these):** H7, L3, L6, and the consent-gating half of N2/M4 — `utils/gtmTracker.ts` on `v3-main` still calls `ttq.track()` unconditionally for every event with no `Cookiebot.consent.marketing` check, and still builds a TikTok twin for non-ecommerce events via `formatTikTokEventName` rather than skipping them.
+
+*Verified 2026-08-19 by reading actual file contents at `origin/v3-main` via `git show` — not by trusting PR diffs or prior doc claims.*
+
+---
+
 ## Live Data Re-Audit (2026-08-17)
 
 Cross-checked this report's claims against live GA4 production data (property `480299801`, via Porter Metrics MCP) and production (`v3-main`) vs. `new-v3-staging` git history. Found one new critical, currently-active bug not covered by the original 23. Punch list below, ranked by urgency.
@@ -78,17 +92,17 @@ Cross-checked this report's claims against live GA4 production data (property `4
 | **N1** | **`add_to_cart` / `remove_from_cart` dead in production since 2026-07-22** | Live GA4 data: both events fired normally through 2026-07-21 (~90–460/day for `add_to_cart`, ~15/day for `remove_from_cart`), then dropped to **exactly zero, same day, both events** — `view_item`/`view_cart`/`begin_checkout`/`purchase` kept firing normally throughout, so this isn't a general tracking outage. **Root cause:** commit `9f9ee4aa` (2026-07-16, merged to `v3-main` 2026-07-21) — the fix that consolidated `add_to_cart`/`remove_from_cart` firing into `cartContext.tsx`'s shared handler and removed the old direct pushes from `CardRoomComponent.tsx` and the tours flow. The shared handler is gated behind `ENABLE_ANALYTICS = process.env.NEXT_PUBLIC_ENABLE_CART_ANALYTICS === "true"` — a flag referenced nowhere else in the repo (not in `.env.production.example`, `.env.staging.example`, or anywhere) and evidently never set to `"true"` in any real environment. **Fix:** remove the `ENABLE_ANALYTICS` gate from both `gtmPushEvent` calls in `contexts/cartContext.tsx` — they should fire unconditionally like `purchase`/`begin_checkout` already do. **Blocks C2** — no point wiring `add_to_cart` into Google Ads goals while GA4 itself has sent zero of them for weeks. |
 | **N2** | **L3 is worse than documented — TikTok twin bypasses GTM consent entirely** | Confirmed on `new-v3-staging` (not just prod): `utils/gtmTracker.ts` calls `window.ttq.track()` directly and unconditionally on *every* `gtmPushEvent` call — not just the 6 mapped ecommerce events the original L3 finding assumed — with **no consent check anywhere in the file**. Fix needs two parts: (a) only build/track the TikTok twin for the mapped ecommerce events per the original L3 fix, and (b) gate the direct `ttq.track()` call behind `Cookiebot.consent.marketing`. Without (b), **M4's GTM-side consent fix is moot** — this code path sends to TikTok regardless of what the GTM tag's consent settings say. |
 
-### 🟡 Deploy what's already fixed
+### ✅ Deploy shipped
 
 | # | Action | Detail |
 |---|---|---|
-| **N3** | **Ship `new-v3-staging` → `v3-main`** | 34 commits ahead of production as of 2026-08-17, including several items this report already marked "✅ Merged, pending prod deploy": **H1** (SPA page_view), **H2** (tours `add_to_cart` over-firing), **H4** (empty `view_item` values), **M1** (email-as-`user_id` PII), **M2** (Clarity consent gating), **L2** (debug code), **L4** (`sign_up` for OAuth) — plus the `/booking/thanks` white-screen fix, the paid-ad attribution loop, and the Enhanced Conversions foundation. None of it helps anyone until it's live. |
+| **N3** | **Ship `new-v3-staging` → `v3-main`** | ✅ **Done 2026-08-19 11:10 SGT via PR #1064.** Was 34 commits ahead of production as of 2026-08-17; now merged. This deploy carried **H1** (SPA page_view), **H2** (tours `add_to_cart` over-firing), **H4** (empty `view_item` values), **M1** (email-as-`user_id` PII), **M2** (Clarity consent gating), **L1**, **L2** (debug code), **L4** (`sign_up` for OAuth) — plus the `/booking/thanks` white-screen fix, the paid-ad attribution loop, and the Enhanced Conversions foundation. All individually reverified against `v3-main` source post-merge — see **Deploy Verification (2026-08-19, post-PR #1064)** below. |
 
 ### 🟠 Needs Google Ads / GTM UI access — not fixable in code
 
 | # | Issue | Note |
 |---|---|---|
-| **C2** | Add to cart / Begin checkout goals have 0 conversion actions in Ads | Do this **after N1** — importing a dead event fixes nothing |
+| **C2** | Add to cart / Begin checkout goals have 0 conversion actions in Ads | ~~Do this **after N1**~~ — re-verified 2026-08-19. Partially fixed same day (see **Live Session Findings**); 6 campaigns + conversion data-flow still open |
 | **M4** | Ad pixels (TikTok/Meta/Sojern/Reddit) fire without consent checks | Do alongside **N2** — GTM-side consent gating alone won't stop the direct `ttq.track()` path |
 | **H7** | iOS/Android purchase conversion actions have swapped Firebase event labels | Quick fix in Ads UI |
 | **L6** | 36 legacy property-specific Ads conversion actions need archiving | Quick fix in Ads UI |
@@ -115,7 +129,123 @@ Found and fixed one new critical bug not covered by the original 23 or the Aug 1
 
 **Verification:** 6 new unit tests (`utils/ecommerceDataLayer.test.ts`, `resolveTransactionId` describe block) covering the short/long/missing/whitespace-only primary and fallback cases; a new Playwright e2e spec (`e2e/tests/booking-thanks-transaction-id.spec.ts`) exercising the real `/booking/thanks` code path against a mocked confirmation response, confirming both the broken-case fallback and the no-regression common case; and a live end-to-end test via Google Tag Assistant against a real staging booking, confirming the outgoing `purchase` event's `ecommerce.transaction_id` came through as the 36-char cart UUID (well under the 64-char limit) rather than the raw session id.
 
-**Status:** fixed on `hotfix/ga4-transaction-id-too-long` (branched off `v3-main`; confirmed no merge conflicts with `new-v3-staging`, which never touched the affected lines). Pending PR into `v3-main`, to be cherry-picked into `new-v3-staging` after merge. This fixes future purchases only — Google Ads does not retroactively reprocess the already-flagged historical transaction IDs.
+**Status:** ✅ Live in production. Merged to `v3-main` via PR #1065 (2026-08-19). Still needs cherry-picking into `new-v3-staging`, which never touched the affected lines so should apply cleanly. This fixes future purchases only — Google Ads does not retroactively reprocess the already-flagged historical transaction IDs.
+
+### 🟡 C2 re-verified and partially fixed — Ads
+
+Re-checked C2 directly against the Ads account (`697-007-4125`) via the Ads API, since N1 being fixed unblocked it and the original "0 conversion actions" finding no longer matched what the account actually showed.
+
+**Revised root cause — scope, not existence:**
+- Both `add_to_cart` and `begin_checkout` GA4-imported conversion actions exist, are Primary, and are Active — the original finding was outdated.
+- Of the account's 4,708 total campaigns, only **16 are ENABLED** (4,694 paused, 211 removed) — the "4,708 campaigns" framing overstates today's actual blast radius by ~300x.
+- Of those 16 live campaigns, only 10 (the `DM_G_SEA_*` Demand Gen set) had `add_to_cart` wired into their bidding goals. The other 6 — 5 `PSEARCH` Search campaigns + 1 `YT` video campaign — had neither `add_to_cart` nor `begin_checkout`.
+- `begin_checkout` had **zero** campaigns using it anywhere in the account. Confirmed in Ads UI (`Goals → Begin checkout → Edit settings`): "Account default: Off", "0 campaigns use Begin checkout as a campaign-specific goal".
+
+**Fixed today:** Turned on the account-default toggle for `begin_checkout`. This applies to the 27 campaigns account-wide that follow account-default goal settings (same 27 that already had `add_to_cart`) — confirmed via the "Review campaign impact" preview before saving, which listed all 27 as `DM_G_SEA_*` campaigns. Now shows Active, 27/4708, matching `add_to_cart`.
+
+**Still open:**
+1. ~~6 live campaigns not covered by the account-default fix~~ — **superseded, see Full Platform Health Check below.** Re-checked `serving_status`/`primary_status_reasons` for all 6 (`PSEARCH` ×5 + `YT` ×1): every one has `serving_status: ENDED` (`CAMPAIGN_ENDED`) — their end date has already passed and they aren't actually serving ads despite showing `status: ENABLED`. Fixing their goals is moot until/unless they're deliberately re-enabled (new end date set). Not urgent.
+2. **Zero recorded conversions despite correct config, as of the fix** — both `add_to_cart` and `begin_checkout` primary conversion actions (`Mad Monkeys - 2025 - Production (web)`) showed "No recent conversions" in Ads immediately after today's fix. Verified this isn't a tracking or linking problem: GA4 confirms both events are marked as key events, and the GA4↔Ads link (account `697-007-4125`, linked 2025-04-22) shows Completed/Active with Personalized Advertising enabled. **Update:** the Full Platform Health Check below found the real explanation — `add_to_cart`/`remove_from_cart` were completely dead in GA4 from 2026-07-22 until the N1 fix shipped ~2026-08-17 (see N1 above), so Ads had nothing to import until 2 days ago. Volume has now recovered sharply (391 → 826 → 313 events/day, Aug 17–19). Import lag on top of that means Ads still needs 24–72h from *today* to catch up — re-check in 1–2 days.
+
+*Investigated 2026-08-19 via Google Ads API (MCP) — `conversion_action`, `campaign_conversion_goal`, `customer_conversion_goal` — cross-checked against the Ads UI and GA4 Events/Admin.*
+
+---
+
+## Full Platform Health Check (2026-08-19)
+
+Requested cross-platform check of Google Ads, GTM, and GA4 — not scoped to a specific bug, a general "is everything actually working" pass. Checked live account structure and the last 14 days of production data, not just config.
+
+### Google Ads — campaign serving reality vs. status label
+
+`campaign.status = ENABLED` only means *not paused/removed* — it does not mean a campaign is actually delivering. Checked `serving_status` and `primary_status_reasons` for all 16 nominally-"ENABLED" campaigns and found the number is misleading:
+
+| Reality | Count | Detail |
+|---|---|---|
+| **Actually `SERVING`** | 7 | All are the `DM_G_SEA_*` Demand Gen set |
+| **`ENDED`** (end date passed, not serving despite `status: ENABLED`) | 9 | All 5 `PSEARCH` campaigns + the `YT` campaign — these are the same 6 flagged in C2 as "missing goals," now confirmed moot since they aren't running |
+
+> **Correction (2026-08-20, verified via `ads_query`):** the "9 ENDED" composition above doesn't fully match the "6 flagged in C2" explanation. Re-pulling all 16 ENABLED campaigns with `serving_status` directly: the 9 ENDED break down as **6** PSEARCH/psearch-named campaigns (not 5 — a 6th, `psearch | Testing - Stay. See. Savor - Siem Reap Q4 10.25.2023`, was omitted from the original count) + 1 YT campaign + **2 previously-unlisted** `DM_G_SEA_BR_Hostels_Asia tROAS test` and `DM_G_SEA_BR_Hostels_ROW tROAS test` campaigns. All 9 are still genuinely `ENDED`, so the "moot, not urgent" conclusion holds for all 9 — the correction is only to the count/composition, not the recommendation.
+
+Of the 7 campaigns actually serving today, only **1 is fully healthy** (`DM_G_SEA_BR_HGL_World` — `primary_status: ELIGIBLE`, no flags). The other 6 all carry live issues:
+
+| Campaign | Issue |
+|---|---|
+| `DM_G_SEA_BR_Core` | `BUDGET_CONSTRAINED` — 7-day spend ~$763 against a $100/day budget, consistent with losing impression share to the budget cap |
+| `DM_G_SEA_BR_Hostels_Asia` | `BUDGET_CONSTRAINED` — 7-day spend ~$984 against a $150/day budget, same pattern |
+| `DM_G_SEA_BR_Hostels_ROW` | `HAS_ADS_LIMITED_BY_POLICY` + an unresolved `UNKNOWN` reason code |
+| `DM_G_SEA_GEN_Hostels` | Unresolved `UNKNOWN` reason code — API gives no further detail, needs a look in Ads UI campaign diagnostics |
+| `DM_G_SEA_BR_Hostels_Thailand_World` | `HAS_ADS_DISAPPROVED` + `HAS_ADS_LIMITED_BY_POLICY` — some ads inside this *currently-serving* campaign aren't running at all |
+| `DM_G_SEA_GEN_HGL_World` | `BIDDING_STRATEGY_LEARNING` — normal/temporary, Smart Bidding still calibrating, not a real problem |
+
+**Action items:** review budget caps on the 2 budget-constrained campaigns (real spend being left on the table); check the Ads UI for the disapproved-ads reason on `Hostels_Thailand_World`; investigate the 2 `UNKNOWN` reason codes directly in the UI since the API doesn't expose more detail. None of this is new-23-list territory — it's live account hygiene the original audit didn't cover because it was scoped to tracking/attribution, not campaign delivery.
+
+**Also confirmed healthy:** conversion tracking is self-managed (no cross-account link issue) · `All Purchase` primary conversion action Active with real ongoing data (~$12.4K / 118 conversions, last 7 days) · T1 fix (transaction_id) confirmed live in production via PR #1065.
+
+### GTM — no orphaned container risk, but tag-level config unverifiable via API
+
+Two containers exist on the account: `Mad Monkeys - New Site - 2025` (`GTM-KC78NFHD`, the live one referenced throughout this doc) and `---OLD---MM Global Tag` (`GTM-KXP8MKN`, explicitly marked old). Grepped the entire `frontend/` codebase for `GTM-KXP8MKN` — **zero references** — confirmed the old container isn't loaded anywhere on the current site, so no double-tagging risk from it.
+
+Could not verify tag/trigger/consent configuration directly through the container API (the workspace query returned empty for tags/triggers/variables — most likely a read-scope limit of this connector rather than an empty container, since GA4 data below confirms tags are actively firing). **N2** (TikTok twin bypassing consent) and **M4** (ad pixels firing without consent) both still need direct GTM UI verification — this pass couldn't add or subtract confidence there either way.
+
+### GA4 — event pipeline confirmed healthy, with one big recovery story
+
+Pulled 14 days of daily event counts (`Mad Monkeys - 2025 - Production`, property `480299801`) for the core ecommerce funnel:
+
+| Event | Aug 5–16 (pre-fix) | Aug 17 | Aug 18 | Aug 19 (partial) |
+|---|---|---|---|---|
+| `page_view` | ~10.7K–13.6K/day | 10,986 | 11,616 | 4,054 |
+| `view_item` | ~5.1K–6.2K/day | 6,220 | 6,427 | 2,646 |
+| `add_to_cart` | **0 — dead** | 391 | 826 | 313 |
+| `remove_from_cart` | **0 — dead** | 62 | 116 | 49 |
+| `begin_checkout` | 69–104/day, no gaps | 91 | 112 | 37 |
+| `purchase` | 43–69/day, no gaps | 61 | 56 | 19 |
+
+This is direct, independent confirmation of **N1**: `add_to_cart`/`remove_from_cart` really were completely dead for the full pre-fix window, and really have recovered — sharply — since the fix shipped. `begin_checkout`, `purchase`, and `view_item` show no gaps anywhere in the 14-day window; `page_view`'s Aug 19 dip is just a partial day (report pulled mid-day), not an anomaly.
+
+**Also confirmed:** GA4↔Ads link for the production property (`697-007-4125`) shows Completed/Active, linked 2025-04-22, Personalized Advertising enabled. `add_to_cart`/`begin_checkout` are both correctly starred as GA4 key events.
+
+**Property sprawl, not urgent but worth a cleanup pass:** the GA4 account has **8 properties** — `Madmonkeyhostels`, `Madmonkey Hostels GA4`, `MMGLOBAL | GA4`, `madmonkey-9f226`, `ga4-test`, `MMGLOBAL YT`, plus the two current ones (`Mad Monkeys - 2025 - Production` and `...Development`). Only Production is live. This sprawl is exactly why Google Ads accumulated 30+ duplicate/hidden conversion actions (`BKK Booking`, `CB Booking`, `Boracay Booking`, etc. — already flagged as **L6**, "archive 36 legacy conversion actions"). Same root cause, GA4 side: worth documenting the legacy properties as deprecated so nobody points new tracking at them by mistake.
+
+### Bottom line
+
+Nothing new broken. The three platforms are internally consistent with each other right now: GA4 sends what GTM tells it to, Ads is linked and reading from the right GA4 property, and the money-critical path (`purchase` → `All Purchase` → Smart Bidding) is clean and duplication-free. The gaps are the ones already tracked in this doc (M4/N2 consent, the 27-vs-16-live-campaign nuance in C2, import lag) plus two new, low-effort items surfaced today: the 2 budget-constrained campaigns and the disapproved-ads flag on `Hostels_Thailand_World`.
+
+### 🟠 AdsHotel (third-party metasearch dashboard) — root cause confirmed, real gaps found
+
+**What it is:** `login.adshotel.com` is a metasearch bid-management dashboard, separate from the Google stack, aggregating 4 channels (confirmed via its Channels tab, 2026-08-19): **Google Hotel Ads** (22 advertisers/campaigns, CPC), **Google Promo** (1, CPC), **TripAdvisor** (22, CPC), and **Trivago**. Its reported monthly totals (e.g. May: 2,107 clicks / $542 cost / $1,394 sales) are the combined total across all 4.
+
+**Confirmed root causes for why it doesn't reconcile against anything in this repo's usual Ads/GA4 checks:**
+
+1. **Google Hotel Ads / Google Promo run under a different Google Ads account entirely.** Queried `campaign.advertising_channel_type = 'HOTEL'` against `6970074125` across *all* campaign statuses (enabled, paused, removed — full 4,921) — **zero results**. No Hotel-type campaign has ever existed in the Ads account this repo has MCP access to. AdsHotel's Google Hotel Ads spend is managed under a separate Customer ID we don't have visibility into. This isn't a bug — it just means reconciling that portion requires either getting that Customer ID added to our Ads API access, or trusting AdsHotel/Google Hotel Center's own reporting directly.
+
+2. **TripAdvisor and Trivago are independent ad networks with no Google Ads presence** — they only reach GA4 if AdsHotel's outbound redirect links carry correct `utm_source`/`utm_medium`. Real gap found: `tripadvisor/cpc` exists in GA4 but at **20–30x lower volume** than AdsHotel reports (91 sessions/$83 in May vs. AdsHotel's much larger totals), and `trivago` **does not appear as a GA4 source at all**, in any month. This looks like broken or inconsistent UTM tagging on the metasearch redirect chain, not a measurement-tool mismatch — real bookings from these channels are likely happening but landing on-site without trackable parameters, so GA4 (and therefore Smart Bidding / any GA4-based attribution) undercounts them.
+
+**Action items:**
+- Get the Google Ads Customer ID behind AdsHotel's "Google Hotel"/"Google Promo" channels added to Ads API access, so Hotel Ads performance can be checked the same way the rest of this account is.
+- Audit the actual outbound URLs AdsHotel/TripAdvisor/Trivago redirect through to the site — confirm `utm_source=tripadvisor`/`utm_source=trivago` (or equivalent) survive the redirect and land in `dataLayer`/GA4. If they don't, that's a real, fixable tracking gap, not just a reporting nuance.
+
+**Status:** root cause identified 2026-08-19; UTM-tagging fix and Ads account access are separate follow-ups, not yet actioned.
+
+---
+
+## MCP Live Verification (2026-08-20)
+
+Independently cross-checked this report's claims against live GA4, GTM, and Google Ads data via the `google-marketing` MCP connector (GA4 property `480299801`, GTM account `6071603403` / container `207039567`, Ads customer `6970074125`) — a different connector than the Porter Metrics/BigQuery MCP used in the 2026-08-17 and 2026-08-19 passes above.
+
+**Confirmed accurate:**
+- GTM containers: `GTM-KC78NFHD` (live) and `GTM-KXP8MKN` (old) exist exactly as described, no orphaned-container risk.
+- **C1**: `transactions` = `ecommercePurchases` = 1,646 exactly (trailing 30 days) — no duplication, consistent with the fix being live.
+- **16 ENABLED campaigns**, of which exactly 7 are `serving_status: SERVING` and all 7 are the `DM_G_SEA_*` set — matches the health-check table precisely.
+- **N1 recovery**: `add_to_cart`/`remove_from_cart` genuinely zero Aug 15–16; Aug 17 figures (391 add_to_cart, 62 remove_from_cart, 91 begin_checkout, 61 purchase, 10,986 page_view, 6,220 view_item) match this report exactly, digit for digit. Aug 18 figures have since drifted slightly lower than what's recorded here (e.g. add_to_cart 826→737, page_view 11,616→11,070) — most likely normal GA4 late-processing/thresholding settling, not an error.
+- **The "27 of 4708" account-default goal claim (C2)** — separately confirmed live in the Ads UI (screenshot, 2026-08-20): Purchase 4,704/4,708, Add to cart 27/4,708, Begin checkout 27/4,708, all Active. The "4,708" denominator is real and matches the Ads UI directly.
+- **C4**: already correctly marked ✅ Live in the Fix Status table above — confirmed via API. `Wheelofpopups_lead_gettingadiscount` now shows `primary_for_goal: false`, and `BCY_Booking`/`PP_Booking` no longer exist in the account at all (fully removed, not just archived).
+- 8 GA4 properties, names verbatim as listed in the Full Platform Health Check section.
+
+**Corrections applied to this report:**
+- **M4** — see updated Fix Status table row above. The live GTM workspace no longer matches the "13 tags NOT_SET" container audit; TikTok, Facebook/FBP, Sojern, Reddit, and Bing/UET tags now show `consentStatus: "needed"`. Only Tapfiliate remains ungated. Status downgraded from "❌ Not fixed" to "🟡 Re-check needed" pending confirmation this workspace state is actually published.
+- **The "9 ENDED = 6 flagged in C2" composition** in Full Platform Health Check — see correction note added to that table. Doesn't change the "moot, not urgent" conclusion, just the count (9, not 6, correctly explained).
+
+*Verified 2026-08-20 via `google-marketing` MCP (`ga4_run_report`, `ga4_list_account_summaries`, `gtm_list_containers`, `gtm_list_workspaces`, `gtm_list_workspace_items`, `ads_list_accessible_customers`, `ads_query`).*
 
 ---
 
@@ -148,16 +278,16 @@ See **Technical Appendix A.1** for the exact code to remove.
 
 ### C2 · Add to cart and Begin checkout goals have 0 conversion actions in Google Ads
 
-**Severity:** Critical | **Owner:** Ads | **Effort:** Low (20 minutes)
+**Severity:** Critical | **Owner:** Ads | **Effort:** Low (20 minutes) — **revised, see below**
 
-**What is happening:**  
-The Google Ads Add to cart and Begin checkout goals both show **0 primary conversion actions** and a **Misconfigured** status.
+**Status (updated 2026-08-19): 🟡 Partially fixed.** The original "0 conversion actions" description no longer matches reality — re-verified directly against the Ads account (`697-007-4125`) via the Ads API. Full investigation and fix log in **Live Session Findings (2026-08-19)** above. Summary:
 
-**Impact:**  
-Smart Bidding has no mid-funnel signals. It cannot distinguish a visitor who bounced from one who added to cart or started checkout. Across 4,708 campaigns, this significantly reduces bidding efficiency. GA4 already fires `add_to_cart` and `begin_checkout` correctly — the data exists, it just is not connected to the Google Ads goals.
+- Both `add_to_cart` and `begin_checkout` GA4-imported conversion actions exist and are correctly configured (Primary, Active). The real problem was **scope**, not existence: `begin_checkout` had zero campaigns using it anywhere in the account (account-default toggle was Off), and of the account's 4,708 total campaigns only **16 are actually ENABLED** — the rest are paused/removed and irrelevant to today's bidding.
+- **Fixed:** account-default toggle for `begin_checkout` turned on — now 27/4708 campaigns (matching `add_to_cart`'s existing default coverage).
+- **Still open:** 6 of the 16 live campaigns (5 `PSEARCH` Search campaigns + 1 `YT` campaign) use customized goal sets that the account-default fix doesn't reach — need `add_to_cart` and `begin_checkout` added manually per campaign. Also, both conversion actions still show 0 recorded conversions in Ads post-fix; GA4 confirms the events are firing with real volume and the GA4↔Ads link is healthy, so this is most likely import lag pending re-verification.
 
-**Fix:**  
-Google Ads → Goals → Conversions → Add to cart → Add conversion action → import from GA4 `add_to_cart` event. Repeat for Begin checkout using `begin_checkout`.
+**Original fix guidance (superseded by the above):**  
+~~Google Ads → Goals → Conversions → Add to cart → Add conversion action → import from GA4 `add_to_cart` event. Repeat for Begin checkout using `begin_checkout`.~~ The GA4 import itself was already configured — the gap was campaign-level goal assignment, not conversion-action setup.
 
 ---
 
@@ -502,7 +632,7 @@ BKK Booking, Boracay Booking, CB Booking, El Nido Booking, Hue Booking, and 31 m
 |---|---|---|---|---|
 | C1 | Remove duplicate `purchase` from `payment.tsx` line 86 | Dev | 1 hour | Stop doubling Google Ads conversion count and value |
 | C3 | Mark `purchase` as GA4 key event | GA4 | 5 mins | Fix GA4 conversion and audience reporting |
-| C2 | Assign `add_to_cart` and `begin_checkout` in Google Ads goals | Ads | 20 mins | Enable Smart Bidding funnel signals across 4,708 campaigns |
+| C2 | Assign `add_to_cart`/`begin_checkout` to the 6 remaining live campaigns (5 `PSEARCH` + 1 `YT`) with customized goal sets; confirm conversions start recording | Ads | 20 mins | Account-default toggle already fixed 2026-08-19 (covers 27/4708); this closes the remaining gap across the 16 actually-live campaigns |
 | C4 | Remove dead UA sources and Wheelofpopups from Primary in Other goal | Ads | 15 mins | Stop 32 campaigns optimising on dead or irrelevant actions |
 | M1 | Replace email with Firebase UID as `user_id` in all auth events | Dev | 1 hour | Fix active PII violation in GA4 and Google Ads |
 

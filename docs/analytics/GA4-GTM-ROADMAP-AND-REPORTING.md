@@ -1,6 +1,6 @@
 # GA4 & GTM — Roadmap, Documentation & Reporting
 
-**Mad Monkey Hostels** · May 2026  
+**Mad Monkey Hostels** · May 2026 · Priority summary & compliance table updated 2026-08-20  
 **Related:** [Implementation guide](./GA4-GTM-IMPLEMENTATION.md) · [Audit report](../../GA4-GTM-AUDIT-REPORT.md) · [Analytics index](./README.md)
 
 This document captures recommended follow-ups after the May 2026 GA4/GTM audit: what to fix first, how to keep documentation and GTM in sync with code, and how to run ongoing reporting and quality checks.
@@ -25,14 +25,14 @@ This document captures recommended follow-ups after the May 2026 GA4/GTM audit: 
 
 ## 1. Priority summary
 
-| Priority | Item | Owner | Est. effort |
-|---|---|---|---|
-| P0 | Remove duplicate `purchase` from `payment.tsx` (audit C1) | Dev | 1 hr |
-| P0 | Mark `purchase` as GA4 key event (C3) | GA4 admin | 5 min |
-| P0 | Wire `add_to_cart` + `begin_checkout` in Google Ads goals (C2) | Ads | 20 min |
-| P0 | Demote dead UA + Wheelofpopups Primary actions (C4) | Ads | 15 min |
-| P0 | Stop sending email as `user_id` (M1) | Dev | 1 hr |
-| P1 | Sprint 1 audit items (H1–H7, M2–M4) | Dev / GTM / GA4 / Ads | ~1–2 days |
+| Priority | Item | Owner | Est. effort | Status |
+|---|---|---|---|---|
+| P0 | Remove duplicate `purchase` from `payment.tsx` (audit C1) | Dev | 1 hr | ✅ Live |
+| P0 | Mark `purchase` as GA4 key event (C3) | GA4 admin | 5 min | ✅ Live |
+| P0 | Wire `add_to_cart` + `begin_checkout` in Google Ads goals (C2) | Ads | 20 min | ✅ Fixed 2026-08-19 (27/4,708 account-default, both Active) |
+| P0 | Demote dead UA + Wheelofpopups Primary actions (C4) | Ads | 15 min | ✅ Fixed, confirmed via Ads API 2026-08-20 |
+| P0 | Stop sending email as `user_id` (M1) | Dev | 1 hr | ✅ Live 2026-08-19 |
+| P1 | Sprint 1 audit items (H1–H7, M2–M4) | Dev / GTM / GA4 / Ads | ~1–2 days | Mostly ✅ Live; **M4 needs re-check** — GTM workspace now shows `consentStatus: "needed"` on TikTok/FB/Sojern/Reddit tags (2026-08-20), publish status unconfirmed; H7/L6 still open (Ads UI) |
 | P2 | Documentation process + GTM in git (this doc §2) | Engineering | ~2 hrs |
 | P2 | Weekly reporting ritual (this doc §10) | Marketing / ops | Ongoing |
 | P3 | Server-side purchase, E2E smoke, BigQuery | Engineering | Project-sized |
@@ -245,7 +245,7 @@ Only map the six ecommerce events in `gtmTracker.ts`; see audit appendix A.8.
 | Email as `user_id` | M1 | UID only; request GA4 data deletion if emails were sent |
 | Clarity without consent | M2 | Gate on `Cookiebot.consent.statistics` |
 | EEA consent defaults | M3 | Expand denied-by-default regions in GTM Cookiebot tag |
-| Ad pixels without consent | M4 | `ad_storage` required on TikTok, FB, Sojern, Reddit tags |
+| Ad pixels without consent | M4 | `ad_storage` required on TikTok, FB, Sojern, Reddit tags — GTM workspace pull (2026-08-20) shows this is now configured (`consentStatus: "needed"`); **confirm it's published to the live container**, and note the direct `ttq.track()` fallback in `gtmTracker.ts` bypasses it regardless (L3/N2) |
 
 Document consent state in privacy policy / DPA reviews when changing tags.
 
@@ -268,7 +268,7 @@ Document consent state in privacy policy / DPA reviews when changing tags.
 
 If you can only do one coordinated pass after Week 1 fixes:
 
-1. Execute **Week 1 audit fixes** (C1–C4, M1)
+1. Execute **Week 1 audit fixes** (C1–C4, M1) — ✅ done as of 2026-08-20
 2. Add **PR analytics checklist** (§8) to frontend PR template
 3. **Commit GTM export** to `docs/analytics/gtm/` + `CHANGELOG.md`
 4. **Link** `docs/analytics/` from `ARCHITECTURE.md`
