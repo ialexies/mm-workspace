@@ -1,7 +1,7 @@
 # GSC "Page with Redirect" Indexing Review
 
-**Date:** 2026-07-30
-**Related:** [SEO-AUDIT.md](SEO-AUDIT.md) (Critical Finding #1 — blank SSR on core pages)
+**Date:** 2026-07-30 (see [2026-08-20 update](#update-2026-08-20--root-cause-of-blank-ssr-found-and-fixed-plus-action-items-resolved) below — all 5 action items resolved, and the "blank SSR on core pages" issue referenced below turned out to have a single root cause, now fixed)
+**Related:** ~~[SEO-AUDIT.md](SEO-AUDIT.md)~~ (Critical Finding #1 — blank SSR on core pages) — this file could not be found in the repo as of 2026-08-20; the link is dangling. Treat the 2026-08-20 update below as the current source of truth for the blank-SSR finding instead.
 
 ---
 
@@ -63,12 +63,35 @@ Two of the five are self-inflicted: the frontend hardcodes links to the stale, r
 ## Action Items
 
 **Now**
-1. Fix `MadPassComponent.tsx:133` to point at MadPass's real current destination (confirm target URL first).
-2. Resolve the `creative-hub` / `creatorhub` duplication in `SecondaryNavigationComponent.tsx` — remove the stale link or confirm both are intentionally distinct.
-3. Remove/update the redirecting `/mad-pass-unlimited-stays/` entry in `sitemap.xml`.
+1. ✅ **Done (2026-08-20).** MadPass CTA never got redirected — instead `MadPassComponent.tsx` was found completely unused (not imported anywhere in the app) and deleted, along with the equally-orphaned `MyAccountNavigation.tsx` (superseded by `MyNewAccountNavigation.tsx`). MadPass no longer exists as a product per the business; no working destination to point the CTA at.
+2. ✅ **Done (2026-08-20).** `SecondaryNavigationComponent.tsx`'s stale `Content Creators` link now points at `/creatorhub/` directly instead of the redirecting `/creative-hub/`.
+3. ✅ **Done (2026-08-20).** `/mad-pass-unlimited-stays/` removed from `sitemap.xml` entirely (not redirect-updated, since the product no longer exists).
 
 **Before re-requesting GSC validation**
-4. Confirm `nacpan-beach` and `creatorhub` are the only slugs referenced anywhere in sitemap/internal links (no lingering references to old slugs).
-5. Investigate `corporate-social-responsibility` and `partners/suppliers` on the WordPress side.
+4. ✅ **Done (2026-08-20).** `sitemap.xml` now uses `nacpan-beach` and `creatorhub` exclusively — grepped for lingering old-slug references, none found.
+5. ⏳ **Still open.** `corporate-social-responsibility` and `partners/suppliers` are WordPress-side, outside this repo. Live-checked 2026-08-20: `partners/suppliers` now resolves `200` directly (no redirect — appears fixed independently on the WP side since 7/30). `corporate-social-responsibility` still 301s to `corporate-social-responsibility-reports/`; `sitemap.xml` now points directly at the `-reports/` URL to avoid submitting a redirecting entry, but the underlying WP redirect itself is unresolved — flag to whoever manages that WP content if it should be fixed rather than just avoided in the sitemap.
 
-**Do not** re-trigger GSC validation until the above are live — the previous validation cycle already failed once (7/13–7/25) because the underlying links weren't fixed yet.
+**Ready to re-trigger GSC validation** once the branch below deploys — all frontend-side blockers are resolved. Re-run the redirect probe from the update below against production first to confirm.
+
+---
+
+## Update (2026-08-20) — root cause of blank SSR found and fixed, plus action items resolved
+
+A follow-up SEO audit (sitemap/robots.txt cleanup, canonical tags, GSC sitemap registration) surfaced something bigger than this review's original scope: the "blank SSR on core pages" issue this doc's header pointed at (via the now-missing `SEO-AUDIT.md`) has a single, confirmed root cause.
+
+**Root cause:** `pages/_app.tsx` (previously) had `if (!maintenanceChecked) return null;` gating the entire app render. `maintenanceChecked` starts `useState(false)` and is only ever flipped to `true` inside a `useEffect` — which never runs during server-side rendering. Result: **every single server-rendered page, on every environment (production/staging/local), returned a completely empty `<div id="__next"></div>`** — no `<title>`, no meta tags, nothing from `next/head` anywhere, on literally every page, confirmed via direct HTML inspection. `pages/_document.tsx`'s independently-fetched OG/description tags were the *only* reason the site had any dynamic meta content at all — a workaround someone already built for exactly this gap, without realizing the gap itself was fixable in one line.
+
+**Fix:** `if (Capacitor.isNativePlatform() && !maintenanceChecked) return null;` — `Capacitor.isNativePlatform()` is always `false` during SSR (no native runtime in Node), so the gate becomes a no-op for web/SSR while native's real maintenance-check gate is preserved unchanged.
+
+**Consequence (expected and handled):** real SSR executing for the first time surfaced two categories of previously-dormant bugs that only crash under actual server rendering:
+- `dompurify` called directly during SSR in 12 files (`DOMPurify.sanitize is not a function` — the package needs a DOM, which doesn't exist in Node). Fixed by swapping to `isomorphic-dompurify` (drop-in replacement) across all 12: `CardPlainComponent.tsx`, `CardTourPlainComponent.tsx`, `Faq.tsx`, `HotelBookingListThumb.tsx`, `MadLoyaltyDiscount.tsx`, `MadLoyaltyMechanics.tsx`, `MadLoyaltyStripe.tsx`, `RoomDetails.tsx`, `TourEventCardComponent.tsx`, `pages/destination/[slug].tsx`, `pages/esim/index.tsx`, `pages/tours-events/[slug].tsx`.
+- `pages/booking/thanks.tsx` accessed `sessionStorage` directly in the component body (not inside an effect), which broke the production *build itself* (static-generation prerender error) once SSR started really running. Fixed with a `typeof window !== "undefined"` guard on the two unconditional call sites (line ~326); the other ~12 `sessionStorage` calls in that file were confirmed already inside `useEffect`/event handlers, safe as-is.
+
+**Additional related work landed alongside this fix** (branch `hotfix/seo-sitemap-canonical-fixes`, not yet merged):
+- `Layout.tsx` now renders `<link rel="canonical">`, sourced from `SeoData.basic.canonical_url` (already computed correctly by the backend, previously fetched and silently discarded) with a self-referencing fallback (never defaults to the homepage — a bug caught in review, since several static pages like `/our-story` never call `fetchSeoData` at all).
+- `next.config.mjs` now redirects trailing-slash duplicates (`/destination/bangkok/` → `/destination/bangkok`) to their canonical form — previously both forms served `200` independently, which is the other half of what was causing duplicate-URL indexing.
+- The WordPress/Yoast sitemap (`sitemap_index.xml`, covering `/blogs/*`, products, destinations — confirmed live and current, `lastmod` 2026-08-19) was never registered with Search Console; added as a second `Sitemap:` line in `robots.txt`.
+- New Playwright regression spec (`e2e/tests/seo-canonical-and-redirects.spec.ts`) guards both the canonical-tag and trailing-slash-redirect behavior going forward.
+- Full verification: `type-check`, `lint`, `next build`, and the full Playwright suite were run both on this branch and against an isolated worktree of unmodified `v3-main` to confirm zero regressions — 16 pre-existing test failures (analytics/auth/session-expiry/booking-thanks-transaction-id) are identical on both, confirmed pre-existing and environmental (not caused by this work).
+
+**Not yet verified:** the native (Capacitor/iOS/Android) build should get a smoke test before this ships — `Capacitor.isNativePlatform()` evaluates `false` server-side regardless of what the eventual client turns out to be, so a genuine native client's first hydration pass could very briefly diverge from the server's non-native assumption. Functionally this should resolve itself immediately (native's own effect still runs the real maintenance check right after), but it hasn't been confirmed on an actual device/simulator.

@@ -185,5 +185,6 @@ Then restart `npm run dev`. The public staging hostname (`staging-backend.madmon
 | Klaviyo WhatsApp opt-in | `frontend/docs/KLAVIYO_WHATSAPP_MARKETING_OPT_IN.md` |
 | Analytics (GA4 / GTM) | `docs/analytics/GA4-GTM-COMPLETE-REFERENCE.md` |
 | Sendbird chat | `docs/SENDBIRD_INTEGRATION.md` |
+| SEO / GSC indexing (canonical tags, sitemap, the `_app.tsx` blank-SSR root cause) | `docs/GSC-REDIRECT-INDEXING-REVIEW.md` |
 | Backend env variables | `backend/.env.example` |
 | Frontend env variables | `frontend/.env.production.example` |
