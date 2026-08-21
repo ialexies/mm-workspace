@@ -33,6 +33,7 @@ This document captures recommended follow-ups after the May 2026 GA4/GTM audit: 
 | P0 | Demote dead UA + Wheelofpopups Primary actions (C4) | Ads | 15 min | ✅ Fixed, confirmed via Ads API 2026-08-20 |
 | P0 | Stop sending email as `user_id` (M1) | Dev | 1 hr | ✅ Live 2026-08-19 |
 | P1 | Sprint 1 audit items (H1–H7, M2–M4) | Dev / GTM / GA4 / Ads | ~1–2 days | Mostly ✅ Live; **M4 needs re-check** — GTM workspace now shows `consentStatus: "needed"` on TikTok/FB/Sojern/Reddit tags (2026-08-20), publish status unconfirmed; H7/L6 still open (Ads UI) |
+| P1 | `purchase` effect in `thanks.tsx` fires on any non-null `summary`, not gated on `summary.status === "success"` — a pending-status confirmation with a `$0`/incomplete total followed by the real success total could double-fire `purchase` for one order. `All Purchase` Ads conversion action is `MANY_PER_CLICK` (no built-in dedup), so this would double-count conversions. Fix: add the status check to the guard at [thanks.tsx:1135-1142](../../frontend/pages/booking/thanks.tsx#L1135-L1142). | Dev | ~30 min | 🔲 To do — after `hotfix/seo-sitemap-canonical-fixes` merges (found during 2026-08-21 conversions review, not yet confirmed reproducing in practice) |
 | P2 | Documentation process + GTM in git (this doc §2) | Engineering | ~2 hrs |
 | P2 | Weekly reporting ritual (this doc §10) | Marketing / ops | Ongoing |
 | P3 | Server-side purchase, E2E smoke, BigQuery | Engineering | Project-sized |

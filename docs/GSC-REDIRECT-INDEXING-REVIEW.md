@@ -95,3 +95,24 @@ A follow-up SEO audit (sitemap/robots.txt cleanup, canonical tags, GSC sitemap r
 - Full verification: `type-check`, `lint`, `next build`, and the full Playwright suite were run both on this branch and against an isolated worktree of unmodified `v3-main` to confirm zero regressions — 16 pre-existing test failures (analytics/auth/session-expiry/booking-thanks-transaction-id) are identical on both, confirmed pre-existing and environmental (not caused by this work).
 
 **Not yet verified:** the native (Capacitor/iOS/Android) build should get a smoke test before this ships — `Capacitor.isNativePlatform()` evaluates `false` server-side regardless of what the eventual client turns out to be, so a genuine native client's first hydration pass could very briefly diverge from the server's non-native assumption. Functionally this should resolve itself immediately (native's own effect still runs the real maintenance check right after), but it hasn't been confirmed on an actual device/simulator.
+
+---
+
+## Update (2026-08-21) — structured data / schema.org gap (AI-search + rich results)
+
+Flagged while researching AI/SEO best practices; verified against the codebase.
+
+**Current state:** the only structured data anywhere on the site is a global `Organization` schema (logo only) in [`_document.tsx`](../frontend/pages/_document.tsx#L202-L211), identical on every page. Grepped the whole frontend for `schema.org`/`application/ld+json` — nothing else exists.
+
+**Gap:** no `LodgingBusiness`/`Hotel` schema on destination pages, no `Product`/`TouristTrip` schema on tour pages, no `Article`/`BreadcrumbList` on blog posts. This matters for two separate audiences:
+- **Classic Google rich results** — star-rating/price snippets in search require this markup.
+- **AI answer engines** (Google AI Overviews, ChatGPT search, Perplexity) — these lean on structured data to extract entity facts (address, price, amenities) rather than parsing rendered HTML, so pages without it are effectively invisible to that layer even once the blank-SSR fix above ships.
+
+**Feasibility check:** [`pages/destination/[slug].tsx`](../frontend/pages/destination/[slug].tsx) already fetches and renders `address`, images (`map_image` + gallery), and price data (`advertisedPrice`, `priceOptions`) client-side — enough to build a basic `LodgingBusiness` schema without new backend work. **Not confirmed available:** aggregate rating/review count and precise lat/long geo-coordinates — needs a check against what Cloudbeds/the backend actually exposes before that part can be scoped.
+
+**Action items (not started):**
+1. ⏳ Add `LodgingBusiness` JSON-LD to `pages/destination/[slug].tsx` using existing address/image/price data.
+2. ⏳ Confirm whether aggregate rating and geo-coordinates are available from the backend; if not, scope as a backend follow-up.
+3. ⏳ Add `Product`/`TouristTrip` schema to tour pages (`pages/tours-events/[slug].tsx`).
+4. ⏳ Add `Article` + `BreadcrumbList` schema to blog posts.
+5. ⏳ Validate with [Google's Rich Results Test](https://search.google.com/test/rich-results) once implemented (do not run non-Google validators against production URLs without checking their ToS first).

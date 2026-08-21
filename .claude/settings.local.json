@@ -128,7 +128,11 @@
       "Bash(CAPACITOR_ALLOW_CLEARTEXT=true npx cap sync android)",
       "PowerShell($adb = \"C:\\\\Users\\\\alexi\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\"; & $adb logcat -d 2>$null | Select-String -Pattern \"_app.tsx|maintenance mode verification\")",
       "Bash(MSYS_NO_PATHCONV=1 /c/Users/alexi/AppData/Local/Android/Sdk/platform-tools/adb.exe shell screencap -p /sdcard/screen.png)",
-      "Bash(MSYS_NO_PATHCONV=1 /c/Users/alexi/AppData/Local/Android/Sdk/platform-tools/adb.exe pull /sdcard/screen.png C:/Users/alexi/AppData/Local/Temp/claude/f--madmonkey2-MM-V3/7a1a9021-0f20-4379-a69e-ba4c1e56ccc7/scratchpad/maintenance_screen.png)"
+      "Bash(MSYS_NO_PATHCONV=1 /c/Users/alexi/AppData/Local/Android/Sdk/platform-tools/adb.exe pull /sdcard/screen.png C:/Users/alexi/AppData/Local/Temp/claude/f--madmonkey2-MM-V3/7a1a9021-0f20-4379-a69e-ba4c1e56ccc7/scratchpad/maintenance_screen.png)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(node find-surfcamp-tour-tmp.mjs)",
+      "Bash(cd f:/madmonkey2/MM_V3/frontend && until grep -q \"✓ Ready\" /tmp/dev-server.log 2>/dev/null; do sleep 1; done; sleep 2; echo \"ready\")"
     ],
     "additionalDirectories": [
       "\\dev"
