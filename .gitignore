@@ -1,6 +1,7 @@
 # Exclude frontend and backend repos
 frontend/
 backend/
+madventure-travel/
 
 # Exclude lovable_pages sub-repos (each folder inside is its own git repo)
 lovable_pages/*/

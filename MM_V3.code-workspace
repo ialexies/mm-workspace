@@ -19,6 +19,9 @@
     {
       "name": "parents-voucher",
       "path": "./parents-voucher"
+    },
+    {
+      "path": "madventure-travel"
     }
   ],
   "settings": {

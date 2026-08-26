@@ -75,7 +75,7 @@ Central index for Mad Monkey V3 web and app analytics. Use these docs when chang
 
 ## Standalone landing pages (non-`frontend/` repos)
 
-Marketing sometimes ships a landing page as its own repo/hosting (e.g. Lovable-built, deployed to Vercel) instead of a route inside `frontend/`. [`docs/GSC-REDIRECT-INDEXING-REVIEW.md`](../GSC-REDIRECT-INDEXING-REVIEW.md#background-landing-page-architecture-question) flagged this pattern as risking analytics fragmentation if each repo bootstraps its own GTM container or GA4 property. Policy: **every standalone landing page reuses the same `GTM-KC78NFHD` container and `G-K27E7XLRBP` GA4 property** — never a new one. See Implementation doc §19 for the bootstrap pattern, policy detail, and onboarding checklist. Two pages built under this policy so far: `parents-voucher/` (Gift of Travel voucher page) and `lovable_pages/mm-squad-trips/` (All In group trips — also the reference for reporting server-side/webhook revenue via GA4 Measurement Protocol, §19.3).
+Marketing sometimes ships a landing page as its own repo/hosting (e.g. Lovable-built, deployed to Vercel) instead of a route inside `frontend/`. [`docs/GSC-REDIRECT-INDEXING-REVIEW.md`](../GSC-REDIRECT-INDEXING-REVIEW.md#background-landing-page-architecture-question) flagged this pattern as risking analytics fragmentation if each repo bootstraps its own GTM container or GA4 property. Policy: **every standalone landing page reuses the same `GTM-KC78NFHD` container and `G-K27E7XLRBP` GA4 property** — never a new one. See Implementation doc §19 for the bootstrap pattern, policy detail, and onboarding checklist. Three pages built under this policy so far: `parents-voucher/` (Gift of Travel voucher page), `lovable_pages/mm-squad-trips/` (All In group trips — also the reference for reporting server-side/webhook revenue via GA4 Measurement Protocol, §19.3), and `madventure-travel/`'s `/ha-giang-loop` route (the confirmed ad-funnel landing page for the Ha Giang Loop tour, reached via `hagianglooptour.madmonkeyhostels.com` — `view_item`/`begin_checkout` only, no `purchase`, since booking always completes off-site).
 
 ## When to read which doc
 
@@ -1033,6 +1033,14 @@ This value is used in GTM to distinguish V3 traffic from legacy traffic.
   </iframe>
 </noscript>
 ```
+
+**Note — Cookiebot is deliberately *not* loaded here.** A hardcoded
+`<script id="CookiebotSetupScript">` briefly lived in this file alongside
+GTM's own "Cookiebot CMP" tag (step 5 in §2.1) — loading `uc.js` from both
+places raced two Cookiebot SDK instances and intermittently deleted app-side
+localStorage (`mm_attribution`) around consent time. Removed 2026-08-24; see
+`frontend/docs/COOKIEBOT_CMP_FIX.md`. Do not re-add a Cookiebot script tag
+here — GTM's tag is the single source.
 
 ### 2.3 `GTM.tsx` — GTM loader component
 
@@ -2798,23 +2806,24 @@ Marketing sometimes ships a landing page as its own repo/hosting (e.g. built in 
 
 ### 19.2 Reference implementations
 
-Two landing pages have been built under this policy so far:
+Three landing pages have been built under this policy so far:
 
-| | [`parents-voucher/`](../../parents-voucher/) | [`lovable_pages/mm-squad-trips/`](../../lovable_pages/mm-squad-trips/) |
-|---|---|---|
-| Product | Gift of Travel voucher purchase | "All In" group trips (deposit + balance) |
-| Repo / hosting | Separate repo, Vercel | Separate repo, Lovable-managed (GitHub `CFSiteDesign/mm-squad-trips`) |
-| Stack | Plain HTML + inline JS, no framework | Vite + React + TypeScript + Supabase |
-| Served at | `giftvouchers.madmonkeyhostels.com` (own subdomain) | `/all-in-trips` on `madmonkeyhostels.com` (path, via Lovable custom domain) |
-| GTM container | `GTM-KC78NFHD` (shared) | `GTM-KC78NFHD` (shared, injected via `VITE_GTM_ID` env var → `%VITE_GTM_ID%` in `index.html`) |
-| GA4 property | `G-K27E7XLRBP` (shared) | Same shared container's GA4 tag — see also §19.3 (Measurement Protocol) |
-| Bootstrap location | Inline `<script>` in `src/template.html` `<head>` (rebuilt into `index.html` via `node build.mjs` — never hand-edit the generated file) | Inline `<script>` in `index.html` `<head>` |
-| Page/event discriminator | `{ app_name: 'gift-vouchers' }` pushed pre-GTM, plus `conversion_type: 'gift_voucher'` per event | No page-level `dataLayer` flag; `item_category4: "All In"` on every item + `conversion_type: 'all_in'` per event |
-| `site_type` (GA4 property routing) | Not set — pure web page, never embedded in the Capacitor webview, so it correctly falls through to the web-property default (see §19.1) | Not set — same reasoning, pure web page |
-| Event push helper | `window.mmTrack(eventName, ecommerceData)` | `src/utils/gtmTracker.ts` + `src/utils/ecommerceDataLayer.ts` — ported near-verbatim from `frontend/utils/*`, minus the TikTok twin (no TikTok Pixel on this site) |
-| Conversion discriminator | `conversion_type: 'gift_voucher'` (top-level, sibling of `ecommerce`) | `conversion_type: 'all_in'` (same convention) |
-| Cookiebot | Loaded by the GTM container's own CMP tag; no separate script | Same policy — a hardcoded second Cookiebot `<script>` was found and removed as a bug fix, see that repo's own [`docs/GTM_GA4_IMPLEMENTATION.md`](../../lovable_pages/mm-squad-trips/docs/GTM_GA4_IMPLEMENTATION.md) |
-| Own docs | [`parents-voucher/README.md`](../../parents-voucher/README.md#analytics) | [`docs/GTM_GA4_IMPLEMENTATION.md`](../../lovable_pages/mm-squad-trips/docs/GTM_GA4_IMPLEMENTATION.md), [`docs/GTM_GA4_TESTING.md`](../../lovable_pages/mm-squad-trips/docs/GTM_GA4_TESTING.md) |
+| | [`parents-voucher/`](../../parents-voucher/) | [`lovable_pages/mm-squad-trips/`](../../lovable_pages/mm-squad-trips/) | [`madventure-travel/`](../../madventure-travel/) (`/ha-giang-loop` route) |
+|---|---|---|---|
+| Product | Gift of Travel voucher purchase | "All In" group trips (deposit + balance) | Ha Giang Loop motorbike tour — the confirmed ad-funnel target (~120 active ad variants on Google Ads customer `6970074125`, campaign `PSEARCH \| HA GIANG LOOP \| INDIA \| EVG \| SEARCH \| HA GIANG LOOP \| NONBRAND \| RETENTION \| ENGLISH \| MT_BM`) |
+| Repo / hosting | Separate repo, Vercel | Separate repo, Lovable-managed (GitHub `CFSiteDesign/mm-squad-trips`) | Separate repo, Vercel — but a full Next.js app (own domain `www.madventures.travel`) with the `/ha-giang-loop` route also mounted at `madmonkeyhostels.com/ha-giang-loop`, unlike the other two single-purpose pages |
+| Stack | Plain HTML + inline JS, no framework | Vite + React + TypeScript + Supabase | Next.js (Pages Router) + MUI |
+| Served at | `giftvouchers.madmonkeyhostels.com` (own subdomain) | `/all-in-trips` on `madmonkeyhostels.com` (path, via Lovable custom domain) | `madmonkeyhostels.com/ha-giang-loop` (ad-facing entry is `hagianglooptour.madmonkeyhostels.com`, 301 → the above) |
+| GTM container | `GTM-KC78NFHD` (shared) | `GTM-KC78NFHD` (shared, injected via `VITE_GTM_ID` env var → `%VITE_GTM_ID%` in `index.html`) | `GTM-KC78NFHD` (shared) — was already hardcoded in `_app.tsx`/`_document.tsx` before this page got event tracking; only the Consent Mode default + discriminator + events were missing |
+| GA4 property | `G-K27E7XLRBP` (shared) | Same shared container's GA4 tag — see also §19.3 (Measurement Protocol) | `G-K27E7XLRBP` (shared) |
+| Bootstrap location | Inline `<script>` in `src/template.html` `<head>` (rebuilt into `index.html` via `node build.mjs` — never hand-edit the generated file) | Inline `<script>` in `index.html` `<head>` | Inline `<script>` in `src/pages/_document.tsx`'s `<Head>` |
+| Page/event discriminator | `{ app_name: 'gift-vouchers' }` pushed pre-GTM, plus `conversion_type: 'gift_voucher'` per event | No page-level `dataLayer` flag; `item_category4: "All In"` on every item + `conversion_type: 'all_in'` per event | `{ app_name: 'madventures' }` pushed pre-GTM (app-wide, since `_document.tsx` wraps every route), plus `conversion_type: 'madventures_ha_giang_loop'` per event on this one page — other routes in this app don't push events yet |
+| `site_type` (GA4 property routing) | Not set — pure web page, never embedded in the Capacitor webview, so it correctly falls through to the web-property default (see §19.1) | Not set — same reasoning, pure web page | Not set — same reasoning |
+| Event push helper | `window.mmTrack(eventName, ecommerceData)` | `src/utils/gtmTracker.ts` + `src/utils/ecommerceDataLayer.ts` — ported near-verbatim from `frontend/utils/*`, minus the TikTok twin (no TikTok Pixel on this site) | `src/utils/gtmTracker.ts` — `gtmPushEvent(eventName, ecommerce?)`, no TikTok twin (the shared container's own FB/TikTok Pixel tags key off the standard events instead) |
+| Conversion discriminator | `conversion_type: 'gift_voucher'` (top-level, sibling of `ecommerce`) | `conversion_type: 'all_in'` (same convention) | `conversion_type: 'madventures_ha_giang_loop'` (same convention). **Deliberately not `hgl`/`ha_giang_loop` bare** — `GTM_CONVERSION_TAGS_BUILD_SPEC.md`'s "HGL Purchases (deferred, 6th type)" explicitly defers inventing an HGL `conversion_type` pending Kyle's input, for the *`frontend/` `purchase` event*. This page never fires `purchase` (booking hands off off-site), so there's no GTM-trigger collision either way, but the namespaced value avoids anyone mistaking this for that separate, still-undefined answer. |
+| Cookiebot | Loaded by the GTM container's own CMP tag; no separate script | Same policy — a hardcoded second Cookiebot `<script>` was found and removed as a bug fix, see that repo's own [`docs/GTM_GA4_IMPLEMENTATION.md`](../../lovable_pages/mm-squad-trips/docs/GTM_GA4_IMPLEMENTATION.md) | Same policy — confirmed live via a headless-browser check against the production page (`window.Cookiebot` populated, driven entirely by the container's own CMP tag) before adding any code here |
+| Events implemented | Full purchase funnel (voucher checkout completes on this page) | Deposit `purchase` client-side + balance `purchase` via Measurement Protocol (§19.3) | `view_item` (page load) + `begin_checkout` (Book Now click) only — no `purchase`, since booking always completes off-site on a WooCommerce-driven link |
+| Own docs | [`parents-voucher/README.md`](../../parents-voucher/README.md#analytics) | [`docs/GTM_GA4_IMPLEMENTATION.md`](../../lovable_pages/mm-squad-trips/docs/GTM_GA4_IMPLEMENTATION.md), [`docs/GTM_GA4_TESTING.md`](../../lovable_pages/mm-squad-trips/docs/GTM_GA4_TESTING.md) | [`madventure-travel/README.md`](../../madventure-travel/README.md#analytics) |
 
 `parents-voucher/` domains (from [its README](../../parents-voucher/README.md#domains)):
 
@@ -2823,6 +2832,14 @@ Two landing pages have been built under this policy so far:
 | `giftvouchers.madmonkeyhostels.com` | Canonical page | Production |
 | `parents.madmonkeyhostels.com` | 301 → `giftvouchers.*` | Retired domain, deliberately kept alive for old shared/printed links |
 | `parents-voucher.vercel.app` | Vercel preview | Staging / Stripe test mode |
+
+`madventure-travel/` domains, confirmed live 2026-08-24 (`curl -I` + a headless-browser check against production — see `GA4-GTM-AUDIT-REPORT.md` for the general audit context, this specific check was ad-hoc and isn't itself in that file):
+
+| Host | Serves | Notes |
+|---|---|---|
+| `www.madventures.travel` | The full `madventure-travel/` app (homepage listing all tours, `/itinerary/[slug]`, `/ha-giang-loop`) | Canonical app domain |
+| `madmonkeyhostels.com/ha-giang-loop` | Same `/ha-giang-loop` route, same Vercel deployment (confirmed via `x-matched-path`/`x-powered-by`/`x-vercel-id` response headers) | The actual ad-facing landing page |
+| `hagianglooptour.madmonkeyhostels.com` | 301 → `madmonkeyhostels.com/ha-giang-loop` | The literal final URL configured on all ~120 active Ha Giang Loop ad variants (confirmed via the `google-marketing` MCP) |
 
 ### 19.3 Server-side reporting via GA4 Measurement Protocol (`mm-squad-trips` pattern)
 
