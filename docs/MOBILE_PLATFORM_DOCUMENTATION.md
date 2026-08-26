@@ -29,7 +29,7 @@ Comprehensive guide covering:
 ### Local Emulator Testing
 **File**: [`frontend/docs/ANDROID_EMULATOR_LOCAL_TESTING.md`](../frontend/docs/ANDROID_EMULATOR_LOCAL_TESTING.md)
 
-Practical troubleshooting for running a local debug build on an Android emulator: pointing the WebView at your dev server (`10.0.2.2`, not `localhost`), AVD storage errors on install, CORS failures when calling the staging backend from an emulator origin (and the `kubectl`/`doctl` port-forward fix), and Google Sign-In's generic "problem communicating with Google servers" error (debug keystore SHA-1 registration vs. antivirus SSL inspection — two different causes, same symptom).
+Practical troubleshooting for running a local debug build on an Android emulator: pointing the WebView at your dev server (`10.0.2.2`, not `localhost`), AVD storage errors on install, CORS failures when calling the staging backend from an emulator origin (and the `kubectl`/`doctl` port-forward fix), Google Sign-In's generic "problem communicating with Google servers" error (debug keystore SHA-1 registration vs. antivirus SSL inspection — two different causes, same symptom), and — a separate, production-only failure — Google Sign-In working on local/emulator release builds but failing instantly on the actual Play Store app (Play App Signing key SHA-1 vs. Upload key SHA-1, plus the reminder that native plugin changes require an actual new release, not just a config fix).
 
 ## iOS
 
