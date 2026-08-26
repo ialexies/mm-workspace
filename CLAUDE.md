@@ -10,9 +10,12 @@ This is an **umbrella repo** — the umbrella root holds shared docs, Cursor con
 |--------|------|-------|
 | `frontend/` | Mad Monkey Web App V3 | Next.js, MUI, Capacitor |
 | `backend/` | Mad Monkey Backend | Bun, Hono, Drizzle, PostgreSQL |
+| `mm-squad-trips/` | [mm-squad-trips](https://github.com/CFSiteDesign/mm-squad-trips) (Lovable-managed) | Vite, React, TypeScript, shadcn-ui, Tailwind, Supabase |
 | `mmk-wp/` | WordPress submodule (optional) | PHP / WP — not part of the Next.js bundle |
 
-`frontend/` and `backend/` are **excluded from the umbrella `.gitignore`** — they are separate repos. Do not introduce shared NPM packages or imports between them. Duplicate small helpers per package if needed.
+`frontend/`, `backend/`, and `mm-squad-trips/` are **excluded from the umbrella `.gitignore`** — they are separate repos. Do not introduce shared NPM packages or imports between them. Duplicate small helpers per package if needed.
+
+`mm-squad-trips/` is a standalone Lovable-managed site (student/squad trips landing pages) backed directly by Supabase — it does not go through the `backend/` Hono API or the `frontend/` OpenAPI client. Edits pushed here also sync back into Lovable.
 
 ## Commands
 

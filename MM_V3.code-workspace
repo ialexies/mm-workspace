@@ -13,15 +13,8 @@
       "path": "./backend"
     },
     {
-      "name": "mm-squad-trips",
-      "path": "./lovable_pages/mm-squad-trips"
-    },
-    {
-      "name": "parents-voucher",
-      "path": "./parents-voucher"
-    },
-    {
-      "path": "madventure-travel"
+      "name": "MM Squad Trips",
+      "path": "./mm-squad-trips"
     }
   ],
   "settings": {
@@ -31,8 +24,7 @@
       ".",
       "./frontend",
       "./backend",
-      "./lovable_pages/mm-squad-trips",
-      "./parents-voucher"
+      "./mm-squad-trips"
     ],
     "files.watcherExclude": {
       "**/node_modules/**": true,

@@ -1,7 +1,10 @@
-# Exclude frontend and backend repos
+# Exclude frontend, backend, and mm-squad-trips repos
 frontend/
 backend/
-madventure-travel/
+mm-squad-trips/
+
+# Per-machine Claude Code permissions (diverges across devices, never share)
+.claude/settings.local.json
 
 # Exclude lovable_pages sub-repos (each folder inside is its own git repo)
 lovable_pages/*/
