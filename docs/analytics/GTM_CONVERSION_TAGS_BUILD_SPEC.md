@@ -383,10 +383,17 @@ live typo'd slug `the-tha-giang-loop-tour-3d2n-self-riding` for free (`"tha gian
 `conversion_type` stays `"tour"` — untouched, same reasoning as Surf Camp (§ "Frontend prerequisite" note
 above: flow-level, not product-level).
 
-**Verified locally (headless browser, `npm run dev` on port 3000):** `add_to_cart` and `begin_checkout`
-both carry `item_category: "Ha Giang Loop"` / `item_category4: "Ha Giang Loop"` for
-`the-ha-giang-loop-tour-3d2n-easy-rider` and for the typo'd `the-tha-giang-loop-tour-3d2n-self-riding`.
-Surf Camp (`surf-camp` slug) regression-checked and still correctly gets `item_category: "Surf Camp"`.
+**Verified locally (headless browser, `npm run dev` on port 3000) against all 4 confirmed-live slugs —
+complete coverage, not just the substring-match theory:**
+- `the-ha-giang-loop-tour-3d2n-easy-rider` ✅ `add_to_cart`/`begin_checkout`
+- `the-ha-giang-loop-tour-4d-3n-easy-rider` ✅ `add_to_cart`/`begin_checkout`
+- `the-ha-giang-loop-tour-4d-3n-self-riding` ✅ real completed purchase (see below)
+- `the-tha-giang-loop-tour-3d2n-self-riding` ✅ `add_to_cart` (the live typo'd slug)
+
+All 4 carry `item_category: "Ha Giang Loop"` / `item_category4: "Ha Giang Loop"` correctly. Also checked:
+`the-tha-giang-loop-tour-4d-3n-easy-rider` and `the-tha-giang-loop-tour-4d-3n-self-riding` both 404 — the
+typo is isolated to one product listing, not systematic, so 4 slugs is the complete set today. Surf Camp
+(`surf-camp` slug) regression-checked and still correctly gets `item_category: "Surf Camp"`.
 `npm run type-check` and a lint pass on the 3 changed files are both clean.
 
 **Verified end-to-end via a real completed purchase (user's own browser + GTM Preview, 2026-08-27)** —
