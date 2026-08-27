@@ -58,7 +58,7 @@ full is in the (superseded, historical) plan; this table is the live source of t
 | **Hostel**         | not started               | not started                           | not started                          | not started                             | not started    | **Next up.** Not started. Needs `Purchase Has Accommodation Item` JS variable first (§1).                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | **Tour**           | not started               | not started                           | not started                          | not started                             | not started    | Not started. Needs `Purchase Has Tour Item` JS variable + shared `Purchase Content IDs` variable (§1).                                                                                                                                                                                                                                                                                                                                                                                                             |
 | **Surf Camp**      | `Purchase - Surf Camp` built | `GA4 - Event - Purchase Surf Camp` built | `FBP Custom - Purchase Surf Camp` built | `TikTok Custom - Purchase Surf Camp` built | not started    | **Live and verified — published to `GTM-KC78NFHD` 2026-08-14 (version "Add Surf Camp purchase tracking (GA4 + Meta + TikTok)").** Verified with a real Stripe **test-mode** purchase run through the actual tour booking flow on `staging.madmonkeyhostels.com/tours-events/surf-camp` (the real "Surf Camp" product, Kuta Lombok, `P0TJG8`, full payment $504.77) — a step up from Parent Voucher's check since this exercises the main site's real booking funnel, not a standalone page. Confirmed via actual outbound network requests: the real `purchase` event correctly carried `item_category: "Surf Camp"` (re-confirming the frontend fix is genuinely live on `new-v3-staging`, not just merged), Meta fired `ev=Purchase_SurfCamp` (`cd[value]=504.77`, `cd[content_ids]`) alongside the standard `ev=Purchase`, and TikTok fired `{"event":"PurchaseSurfCamp"}` — correctly **without** the underscore, confirming the `gtmTracker.ts` naming workaround (§3) was applied correctly. GA4's `purchase_surf_camp` was independently confirmed via the user's own GTM Preview/Tag Assistant session: Firing Status "Succeeded", `eventSettingsTable` shows `value`/`currency`/`transaction_id`/**`items`** all correctly bound to `{{ecommerce.*}}`, hit sent to `G-27GXNDKYWW`. This also resolves the open question from Parent Voucher's row below — confirms the `items` Event Parameter binding pattern works correctly when configured right. Consent-gating confirmed both directions in separate Preview runs: Meta/TikTok tags blocked pre-consent (trigger filters matched via green checkmarks, consent was the only thing withheld) and fired post-consent. **Caveat:** verified against staging (`G-27GXNDKYWW`, dev property), not yet against production. **Still open:** (1) ~~star `purchase_surf_camp` as a GA4 Key Event~~ — **reversed 2026-08-26: do not star this, see [GA4 Key Events — final decision](#ga4-key-events--final-decision-2026-08-26) below.** It was starred and has since been un-starred; (2) create a Meta Custom Conversion for `Purchase_SurfCamp`; (3) confirm/create the TikTok equivalent for `PurchaseSurfCamp`; (4) Google Ads tag — blocked on §4. |
-| **HGL**            | —                         | —                                     | —                                    | —                                       | —              | Deferred — not designed, no definition exists yet (see below).                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **HGL**            | not started (spec drafted, §7) | not started               | not started                          | not started                             | not started    | **Frontend prerequisite implemented and FULLY verified end-to-end, GTM side still deferred pending Kyle** (see below). The ambiguity about what "HGL" even refers to has a strong candidate answer: `https://madmonkeyhostels.com/tours-events/the-ha-giang-loop-tour-3d2n-easy-rider` is a real, live `frontend/` tour page (confirmed by loading it directly — real title, real $213.76/person price, real "Book Now" checkout), reached from `madventure-travel`'s Ha Giang Loop marketing page. `isHaGiangLoopTour()` (mirroring `isSurfCampTour()`, §7.1) is implemented on branch `hotfix/ha-giang-loop-purchase-tagging` (off `v3-main`, not merged). Confirmed via headless testing: `add_to_cart` and `begin_checkout` both carry `item_category: "Ha Giang Loop"` for all 3 confirmed-live slugs, including the live typo'd one (`the-tha-giang-loop-tour-3d2n-self-riding`); Surf Camp regression-checked and still correctly gets `"Surf Camp"`. **Confirmed via a real completed purchase (user's own GTM Preview session, 2026-08-27):** "The Ha Giang Loop Tour 4D / 3N (Self-Riding)" booked end-to-end, real `transaction_id`, `$203.80` — the actual `purchase` `dataLayer.push` carried `item_category: "Ha Giang Loop"` and `item_category4: "Ha Giang Loop"` on the item, `conversion_type: "tour"` correctly untouched, and `item_category2: "Signature Tours"` (existing signature-tour categorization) composing cleanly alongside it with no conflict. GTM's Tags-Fired report for that same purchase confirmed the standard aggregate tags fire correctly (`FBP Purchase Tag … V2`, `ga4 - event - ecommerce events`, `Google Ads - Purchase`, `Reddit - Purchase Event`, `TikTok - All Events`) and, as expected, no Ha Giang Loop-specific tag appears anywhere (fired or not) since none is built yet. GTM tags (§7.4) remain undrafted-into-GTM and pending Kyle's confirmation this tour is what "HGL" means — that's the only remaining step. |
 
 **Other open items:**
 
@@ -123,7 +123,10 @@ the value binding**, not the other way around, or revenue (not just count) will 
 - **HGL Purchases (deferred, 6th type)** — DemandMore's email is the first place "HGL" appears anywhere;
   no `HGL` category, item, or `conversion_type` value exists in `frontend/` or the GTM container today. Do
   not invent a definition — wait for Kyle to clarify what HGL actually refers to before designing a trigger
-  or tags for it.
+  or tags for it. **Update:** a real internal Rezdy tour that's plausibly what "HGL" means was found and
+  confirmed live (see the HGL row above) — §7 drafts the full mirror-of-Surf-Camp spec against it so
+  whoever builds this isn't starting from zero once Kyle confirms, but the frontend code in §7 is **not
+  implemented**, and nothing GTM-side should be built until Kyle actually confirms the tour is what he meant.
 
 ## Frontend prerequisite (done, merged)
 
@@ -346,6 +349,137 @@ One pre-existing, unrelated discrepancy worth a note for whoever maintains `mm-s
 GTM loader (per the Implementation doc §19.1 policy); `mm-squad-trips` doesn't have an equivalent
 `app_name` push (§19.2 documents `item_category4`/`conversion_type` as its accepted substitute). Not a
 blocker for this build since `conversion_type` already does the job at the event level.
+
+## 7. Ha Giang Loop — frontend prerequisite implemented, GTM tags NOT yet built (pending Kyle)
+
+§7.1's frontend change is implemented and locally verified on branch `hotfix/ha-giang-loop-purchase-tagging`
+(off `v3-main`, **not merged**). §7.2-7.4 (the actual GTM variable/trigger/tags) remain proposals only,
+mirroring Surf Camp's already-built pattern exactly — **nothing GTM-side is built.** This section exists
+so that once Kyle confirms "HGL" means the tour found live at
+`madmonkeyhostels.com/tours-events/the-ha-giang-loop-tour-3d2n-easy-rider` (see the HGL row in "Build
+progress" above), the GTM build is copy-paste-ready instead of starting from a blank page.
+
+### 7.1 Frontend prerequisite (implemented, branch not merged)
+
+Added `isHaGiangLoopTour(name, slug)` to `frontend/utils/ecommerceDataLayer.ts`, mirroring
+`isSurfCampTour()` (lines 113-120) — case-insensitive substring match, `"ha giang"` in place of
+`"surf"`, **with one deliberate difference**: hyphens are normalized to spaces before matching, since
+"Ha Giang" is two words and the display name (space-separated) vs. slug (hyphen-separated) use different
+separators — `isSurfCampTour`'s single-token `"surf"` never had to handle this. This also catches the
+live typo'd slug `the-tha-giang-loop-tour-3d2n-self-riding` for free (`"tha giang"` still contains
+`"ha giang"` as a substring) — confirmed empirically, not just by inspection. Plus a new
+`ITEM_CATEGORY_HA_GIANG_LOOP = "Ha Giang Loop"` constant. Wired into the same 6 call sites
+`isSurfCampTour` already touches, chaining so Surf Camp's existing behavior can't regress:
+`item_category: isSurf ? ITEM_CATEGORY_SURF_CAMP : isHgl ? ITEM_CATEGORY_HA_GIANG_LOOP : ITEM_CATEGORY_TOUR`
+(same chain for `item_category4`):
+
+1. `frontend/utils/ecommerceDataLayer.ts:208-236` — `buildCartEcommerceItems()`, optimistic-`items[]` branch
+2. `frontend/utils/ecommerceDataLayer.ts:237-257` — same function, single-tour branch
+3. `frontend/utils/ecommerceDataLayer.ts:322-343` — `buildSummaryEcommerceItems()`
+4. `frontend/contexts/cartContext.tsx:1286-1291` — add_to_cart builder
+5. `frontend/contexts/cartContext.tsx:1341-1346` — remove_from_cart builder
+6. `frontend/pages/tours-events/[slug].tsx:352-362` — begin_checkout builder
+
+`conversion_type` stays `"tour"` — untouched, same reasoning as Surf Camp (§ "Frontend prerequisite" note
+above: flow-level, not product-level).
+
+**Verified locally (headless browser, `npm run dev` on port 3000):** `add_to_cart` and `begin_checkout`
+both carry `item_category: "Ha Giang Loop"` / `item_category4: "Ha Giang Loop"` for
+`the-ha-giang-loop-tour-3d2n-easy-rider` and for the typo'd `the-tha-giang-loop-tour-3d2n-self-riding`.
+Surf Camp (`surf-camp` slug) regression-checked and still correctly gets `item_category: "Surf Camp"`.
+`npm run type-check` and a lint pass on the 3 changed files are both clean.
+
+**Verified end-to-end via a real completed purchase (user's own browser + GTM Preview, 2026-08-27)** —
+the gap headless automation couldn't close (checkout navigation stalled under headless automation for
+unclear reasons; worked fine in a real browser). "The Ha Giang Loop Tour 4D / 3N (Self-Riding)" booked
+through Stripe checkout end-to-end; the actual `purchase` `dataLayer.push`:
+```js
+dataLayer.push({
+  event: "purchase",
+  conversion_type: "tour",             // ← correctly untouched, flow-level field
+  ecommerce: {
+    transaction_id: "b10ddadf-134b-4dc6-9bde-8ebe132a5734",
+    value: 203.8,
+    currency: "USD",
+    items: [{
+      item_id: "243481",
+      item_name: "The Ha Giang Loop Tour 4D / 3N (Self-Riding)",
+      item_category: "Ha Giang Loop",   // ← this plan's change, confirmed live
+      item_category2: "Signature Tours", // ← pre-existing, composes cleanly alongside it
+      item_category3: "Mad Monkey Hanoi",
+      item_category4: "Ha Giang Loop",  // ← this plan's change, confirmed live
+      price: 203.8,
+      quantity: 1,
+    }],
+  },
+});
+```
+GTM's Tags-Fired report for this same event confirmed the standard aggregate tags fire correctly
+(`FBP Purchase Tag … V2`, `ga4 - event - ecommerce events`, `Google Ads - Purchase`,
+`Reddit - Purchase Event`, `TikTok - All Events`), and — as expected, not a bug — no Ha Giang
+Loop-specific tag appears anywhere in the Tags-Fired or Tags-Not-Fired lists, since none is built yet.
+**This closes out frontend verification entirely.** The only remaining step for this whole feature is
+Kyle confirming this tour is what "HGL" means, then building §7.2-7.4 in GTM.
+
+### 7.2 New variable (§1 pattern)
+
+| Variable | Type | Value |
+|---|---|---|
+| `Purchase Has Ha Giang Loop Item` | Custom JavaScript | `function(){var i={{ecommerce.items}};return Array.isArray(i)&&i.some(function(x){return x&&x.item_category==='Ha Giang Loop';});}` |
+
+### 7.3 New trigger (§2 pattern)
+
+| Trigger name | Extra condition |
+|---|---|
+| `Purchase - Ha Giang Loop` | `{{Purchase Has Ha Giang Loop Item}}` equals `true` |
+
+(base condition `event` equals `purchase`, same as every other trigger in §2)
+
+### 7.4 New tags (§3 pattern) — field-by-field, confirmed against the live Surf Camp tags in GTM
+
+**`GA4 - Event - Purchase Ha Giang Loop`**
+- Type: Google Analytics: GA4 Event · Send Ecommerce data: `false`
+- `eventSettingsTable`: `value` → `{{ecommerce.value}}`, `currency` → `{{ecommerce.currency}}`,
+  `transaction_id` → `{{dl - ecommerce.transaction_id}}`, `items` → `{{ecommerce.items}}`
+- Event Name: `purchase_ha_giang_loop` · Measurement ID: `{{lut - ga property 1}}`
+- Trigger: `Purchase - Ha Giang Loop`
+- **Do not star as a GA4 Key Event** — see "GA4 Key Events — final decision" above; this is a standing
+  rule, this type is no exception.
+
+**`FBP Custom - Purchase Ha Giang Loop`**
+- Type: Facebook Pixel (community template `cvt_5RM3Q`, same as the existing Surf Camp/aggregate tags),
+  Pixel ID `1689683661798465`
+- `objectPropertyList`: `value` → `{{dl - ecommerce.value}}`, `currency` → `{{dl - ecommerce.currency}}`,
+  `content_type` → `"product"`, `content_ids` → `{{Purchase Content IDs}}`
+- Trigger: `Purchase - Ha Giang Loop`
+
+**`TikTok Custom - Purchase Ha Giang Loop`**
+- Type: Custom HTML —
+  ```html
+  <script type="text/gtmscript">ttq.track("PurchaseHaGiangLoop",{value: {{ecommerce.value}},currency: {{ecommerce.currency}},contents:{{Purchase Content IDs}}});</script>
+  ```
+- **No underscore** — `"PurchaseHaGiangLoop"`, not `"Purchase_HaGiangLoop"` — same reasoning as
+  Hostel/Tour/Surf Camp (§3's TikTok naming caveat): `gtmTracker.ts`'s `ensureTikTokTrackPatched()` strips
+  non-alphanumerics from any event name on the main site, so the string configured here must already be
+  pre-stripped to match what TikTok actually receives.
+- Required Additional Consent: `ad_storage`, `ad_user_data` (same consent gate as every other new tag —
+  §5 applies here too)
+- Trigger: `Purchase - Ha Giang Loop`
+
+**Google Ads** — not drafted; blocked on §4 for every type, not just this one, so there's nothing typeable
+yet regardless.
+
+### 7.5 Known bugs to watch for, not to repeat
+
+Two open issues already confirmed in production for Surf Camp/ALL IN (see "GA4 Key Events — final
+decision" above) will very likely reproduce identically for Ha Giang Loop unless someone checks for them
+during this build, not after:
+- The `value` parameter isn't actually populating on `purchase_surf_camp`/`purchase_all_in` in production
+  despite the `eventSettingsTable` binding looking correct — worth a real network-request check (not just
+  trusting GTM Preview) before calling this done.
+- Never star `purchase_ha_giang_loop` as a GA4 Key Event (7.4 above) — it would double-count the same
+  transaction the standard `purchase` event already counts, exactly like the other three types did until
+  the 2026-08-26 reversal.
 
 ## Verification
 
