@@ -1,7 +1,10 @@
-# Exclude frontend, backend, and mm-squad-trips repos
+# Exclude frontend, backend, and other cloned sub-repos
 frontend/
 backend/
 mm-squad-trips/
+madventure-travel/
+parents-voucher/
+anti-schoolies/
 
 # Per-machine Claude Code permissions (diverges across devices, never share)
 .claude/settings.local.json
