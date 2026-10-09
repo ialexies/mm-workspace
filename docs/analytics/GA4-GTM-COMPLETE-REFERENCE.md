@@ -1,7 +1,7 @@
 ﻿# Mad Monkey Hostels — GA4, GTM & Google Ads (Complete Reference)
 
 > **Single-file bundle for LLM context.** Combines the analytics index, May 2026 audit report, implementation guide, roadmap & reporting, PR checklist, and GTM changelog.  
-> **Generated:** May 2026 · **Last resynced:** 2026-08-20 (Part 1 + Part 3 §19 — standalone landing pages / shared-analytics-account policy; Part 3 §3.5/§10.1/§10.4/§13.1/§15 and Part 4 — MCP live verification of C2/C4/M4 status) · **Sources:** `docs/analytics/*`, `GA4-GTM-AUDIT-REPORT.md`  
+> **Generated:** May 2026 · **Last resynced:** 2026-10-09 (Part 1 index, Part 3 §5.1/§12.2/§12.3/§15/file map, Part 4 §3.3 — multi-cart `cart_type` tracking, see `MULTI_CART_TRACKING.md`); 2026-08-20 (Part 1 + Part 3 §19 — standalone landing pages / shared-analytics-account policy; Part 3 §3.5/§10.1/§10.4/§13.1/§15 and Part 4 — MCP live verification of C2/C4/M4 status) · **Sources:** `docs/analytics/*`, `GA4-GTM-AUDIT-REPORT.md`  
 > **Part 2 is NOT resynced past May 2026** — see the note at the top of Part 2 and read `GA4-GTM-AUDIT-REPORT.md` directly for current fix status.  
 > **Size:** ~125 KB · ~2,450 lines · GTM `GTM-KC78NFHD` · GA4 `G-K27E7XLRBP` · Google Ads `697-007-4125`
 
@@ -45,6 +45,7 @@ Central index for Mad Monkey V3 web and app analytics. Use these docs when chang
 |---|---|---|
 | [GA4-GTM-IMPLEMENTATION.md](./GA4-GTM-IMPLEMENTATION.md) | Engineering, GTM admin | How tracking works today: architecture, events, flows, GTM/GA4/Ads config, testing, incidents |
 | [GA4-GTM-ROADMAP-AND-REPORTING.md](./GA4-GTM-ROADMAP-AND-REPORTING.md) | Engineering, marketing, ops | Recommended next steps, documentation process, reporting & monitoring |
+| [MULTI_CART_TRACKING.md](./MULTI_CART_TRACKING.md) | Marketing, engineering, GTM admin | Single vs multi-cart bookings: `cart_type` / `property_count` / `item_count`, GTM variables, GA4 definitions, reporting, caveats |
 | [GA4-GTM-AUDIT-REPORT.md](../../GA4-GTM-AUDIT-REPORT.md) | Leadership, ads, engineering | May 2026 audit findings, severity, fix roadmap, technical appendix |
 
 ## Interactive report
@@ -1429,6 +1430,22 @@ gtmPushEvent("begin_checkout", {    // or deferGtmPushEvent
 });
 ```
 
+**Cart composition parameters (top-level, added 2026-10):** `begin_checkout` and `purchase` also carry
+`cart_type`, `property_count` and `item_count`, siblings of `ecommerce`, for comparing multi-cart against
+single-cart bookings. **v4 only** (`app/v4/booking/_lib/useBeginCheckoutEvent.ts` and
+`app/v4/booking/thanks/_lib/analytics.ts`), through the shared, fail-safe helpers in
+`utils/bookingDataLayer.ts`. The legacy `pages/booking/*` events deliberately don't send them (that site is
+retired after 16 October), so they appear as *(not set)*. Additive only: `conversion_type` is unchanged.
+
+| Parameter | Values | GA4 registration |
+|---|---|---|
+| `cart_type` | `single` · `multi_property` · `mixed` · `mixed_multi_property` | Custom dimension (Event): **Cart Type** |
+| `property_count` | distinct hostels with rooms (0 = tour-only) | Custom metric (Event): **Property Count** |
+| `item_count` | room lines + tour lines | Custom metric (Event): **Item Count** |
+
+Full definitions, GTM setup (scoped `cjs - … (checkout)` variables) and reporting: [MULTI_CART_TRACKING.md](./MULTI_CART_TRACKING.md).
+
+
 ---
 
 #### `add_payment_info`
@@ -1536,6 +1553,9 @@ gtmPushEvent("purchase", {
 | `reservation_id` | Internal booking ID | Custom dimension — registered |
 | `coupon` | Applied coupon code | Standard |
 | `currency` | Always "USD" | Standard |
+| `cart_type` | `single` / `multi_property` / `mixed` / `mixed_multi_property` (top-level; see [MULTI_CART_TRACKING.md](./MULTI_CART_TRACKING.md)) | Custom dimension — Cart Type |
+| `property_count` | Distinct hostels with rooms (top-level) | Custom metric — Property Count |
+| `item_count` | Room lines + tour lines (top-level) | Custom metric — Item Count |
 
 ---
 
@@ -2105,12 +2125,15 @@ window.location.hostname === 'localhost'  →  G-27GXNDKYWW (development)
 | `original_value` | Event | `original_value` | **WRONG TYPE — should be metric, not dimension (§15 H6)** |
 | `user_group` | Event | `user_group` | Always `[V3]` for V3 traffic |
 | `app_page_location` | — | `app_page_location` | **NOT REGISTERED — app navigation invisible (§15 H5)** |
+| Cart Type | Event | `cart_type` | Multi-cart reporting ([MULTI_CART_TRACKING.md](./MULTI_CART_TRACKING.md)). **Register before the GTM publish.** |
 
 ### 12.3 Custom metrics
 
 | Metric name | Scope | Parameter | Notes |
 |---|---|---|---|
 | (none registered) | — | — | `original_value` should be here |
+| Property Count | Event (Standard) | `property_count` | Multi-cart reporting. **Register before the GTM publish.** |
+| Item Count | Event (Standard) | `item_count` | Multi-cart reporting. **Register before the GTM publish.** |
 
 ### 12.4 Key events (starred conversions)
 
@@ -2253,6 +2276,14 @@ A full audit was conducted in May 2026. The following issues were identified. Se
 | L5 | Analytics window globals untyped in `global.d.ts` | `types/global.d.ts` |
 | L6 | 36 legacy property-specific Google Ads actions need archiving | Google Ads |
 
+### Found during multi-cart tracking (2026-10) — deferred
+
+| ID | Issue | Location |
+|---|---|---|
+| M-MC1 | **Room + tour (and credit-paid multi-property) `purchase` is wrong on the legacy confirmation page.** `value` reads `summary.totals` (first property only) instead of `grandTotals`; the tours are dropped from `items[]`; the rooms are mapped as `item_category: "Tour"`, `item_id: "unknown"` (`buildSummaryEcommerceItems(…, "mixed")`); `conversion_type` is missing. v4 sends the right `value` but also omits mixed tours from `items[]`. Fixing it changes the values Ads/Meta/TikTok/Sojern receive and makes the Surf Camp tags fire for room + Surf Camp orders, so it needs marketing sign-off. | `pages/booking/thanks.tsx` (`lineItems`, `totalValue`), `app/v4/booking/thanks/_lib/analytics.ts` |
+| M-MC2 | **Top-level dataLayer keys leak across events.** `ga4 - event - ecommerce events` forwards `hostel_name` / `hostel_country` / `conversion_type` straight from DLVs on all 14 ecommerce events, and GTM keeps top-level keys until overwritten, so a `view_item` after a checkout reports the last checkout's values. The multi-cart params avoid this with event-scoped `cjs - … (checkout)` variables; the existing params are unchanged. | GTM |
+
+
 ---
 
 ## Appendix — File Map
@@ -2270,6 +2301,9 @@ A full audit was conducted in May 2026. The following issues were identified. Se
 | `frontend/pages/booking/index.tsx` | `begin_checkout` (canonical) |
 | `frontend/pages/booking/payment.tsx` | `purchase` (DUPLICATE — remove), `payment_error` |
 | `frontend/pages/booking/thanks.tsx` | `purchase` (canonical + dedup), Tapfiliate conversion |
+| `frontend/utils/bookingDataLayer.ts` | Top-level booking fields (`conversion_type`, `hostel_*`) and cart composition (`cart_type`, `property_count`, `item_count`) |
+| `frontend/app/v4/booking/_lib/useBeginCheckoutEvent.ts` | v4 `begin_checkout` (fires on arrival at checkout) |
+| `frontend/app/v4/booking/thanks/_lib/analytics.ts` | v4 `purchase` (rooms/mixed + tour-only), Tapfiliate conversion |
 | `frontend/pages/destination/[slug].tsx` | `view_item` (broken payload) |
 | `frontend/pages/room/[slug].tsx` | `view_item_list` |
 | `frontend/pages/tours-events/index.tsx` | `view_item_list` |
@@ -3031,6 +3065,7 @@ Add entries to `frontend/.env.example` with comments pointing to the implementat
 | **DebugView** | Parameter validation during development |
 | **Explorations → Funnel** | `view_item` → `add_to_cart` → `begin_checkout` → `purchase` |
 | **Explorations → Free form** | Segment by `user_group`, `reservation_id`, device |
+| **Explorations → Free form / Funnel by Cart Type** | Single vs multi-cart: rows *Cart Type* × Transactions / Purchase revenue / Average purchase revenue; funnel `begin_checkout` → `purchase` broken down by *Cart Type*. Exclude *(not set)* (old-site traffic). Order revenue per Cart Type is reliable; item-level tour revenue on `mixed*` orders is not until §15 M-MC1 is fixed. See [MULTI_CART_TRACKING.md](./MULTI_CART_TRACKING.md) |
 | **Admin → Events** | Key events, new event registration |
 | **Admin → Data display → Filters** | Exclude internal/test traffic if IP or debug params defined |
 

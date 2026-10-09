@@ -566,6 +566,21 @@ gtmPushEvent("begin_checkout", {    // or deferGtmPushEvent
 });
 ```
 
+**Cart composition parameters (top-level, added 2026-10):** `begin_checkout` and `purchase` also carry
+`cart_type`, `property_count` and `item_count`, siblings of `ecommerce`, for comparing multi-cart against
+single-cart bookings. **v4 only** (`app/v4/booking/_lib/useBeginCheckoutEvent.ts` and
+`app/v4/booking/thanks/_lib/analytics.ts`), through the shared, fail-safe helpers in
+`utils/bookingDataLayer.ts`. The legacy `pages/booking/*` events deliberately don't send them (that site is
+retired after 16 October), so they appear as *(not set)*. Additive only: `conversion_type` is unchanged.
+
+| Parameter | Values | GA4 registration |
+|---|---|---|
+| `cart_type` | `single` · `multi_property` · `mixed` · `mixed_multi_property` | Custom dimension (Event): **Cart Type** |
+| `property_count` | distinct hostels with rooms (0 = tour-only) | Custom metric (Event): **Property Count** |
+| `item_count` | room lines + tour lines | Custom metric (Event): **Item Count** |
+
+Full definitions, GTM setup (scoped `cjs - … (checkout)` variables) and reporting: [MULTI_CART_TRACKING.md](./MULTI_CART_TRACKING.md).
+
 ---
 
 #### `add_payment_info`
@@ -653,7 +668,7 @@ if (!sessionStorage.getItem(dedupKey)) {
 }
 ```
 
-**Multi-property orders (fixed 2026-07-16):** a single order can span more than one property (the "add a stop" checkout upsell). `items[]` is built from the confirmation response's `bookings[]` array (one entry per property, each with its own `destination`), not the flat top-level summary — a prior bug read only the flat summary and silently dropped every property's rooms except the anchor from `items[]` while `value` (sourced from `grandTotals.total`) already correctly included all of them. See `frontend/pages/booking/thanks.tsx` `lineItems` and `playwright-verify/verify-multiproperty-item-category3-local.mjs`.
+**Multi-property orders (fixed 2026-07-16):** a single order can span more than one property (the "add a stop" checkout upsell). `items[]` is built from the confirmation response's `bookings[]` array (one entry per property, each with its own `destination`), not the flat top-level summary — a prior bug read only the flat summary and silently dropped every property's rooms except the anchor from `items[]` while `value` already included all of them. **Correction (2026-10):** on the legacy page `value` is read from `summary.totals.total`, not `grandTotals.total`. The backend only puts the whole payment there on the Stripe rooms-only path; for room + tour and credit-paid multi-property orders it holds the first property's totals, so `value` is under-reported. See §15 M-MC1. See `frontend/pages/booking/thanks.tsx` `lineItems` and `playwright-verify/verify-multiproperty-item-category3-local.mjs`.
 
 **Tour coupon (fixed 2026-07-17, frontend-only workaround):** the backend confirmation response has no coupon data for tours at all — `couponCodes`/`summary.coupons` are hardcoded empty in the rezdy confirmation branch (`backend/src/routes/cart.ts`), a real backend gap, deliberately deferred rather than fixed here. Rooms read `couponName` from `roomsSummary?.coupons` (backend-confirmed, accurate). Tours instead relay the coupon captured in `sessionStorage` at checkout time (`utils/bookingDataLayer.ts`'s `coupon` field, same mechanism already used for `hostel_country`/`hostel_name`) and read it back in `thanks.tsx`'s tours `lineItems` mapper. `value` is unaffected either way (always backend-confirmed) — only the coupon *label* uses this relay for tours. Narrow edge case: if a coupon is invalidated in the window between clicking pay and the charge completing, the relay could show a coupon that wasn't actually honored on the final charge — considered acceptable given how short that window is. Verified live with a real coupon (`TEST10`) on a tour purchase. Verifier: `playwright-verify/verify-tour-coupon-local.mjs`.
 
@@ -679,6 +694,9 @@ gtmPushEvent("purchase", {
 | `reservation_id` | Internal booking ID | Custom dimension — registered |
 | `coupon` | Applied coupon code | Standard |
 | `currency` | Customer's actual charge currency (uppercase ISO 4217) — multi-currency, not fixed to USD | Standard |
+| `cart_type` | `single` / `multi_property` / `mixed` / `mixed_multi_property` (top-level; see [MULTI_CART_TRACKING.md](./MULTI_CART_TRACKING.md)) | Custom dimension — Cart Type |
+| `property_count` | Distinct hostels with rooms (top-level) | Custom metric — Property Count |
+| `item_count` | Room lines + tour lines (top-level) | Custom metric — Item Count |
 
 ---
 
@@ -1248,12 +1266,15 @@ window.location.hostname === 'localhost'  →  G-27GXNDKYWW (development)
 | `original_value` | Event | `original_value` | **WRONG TYPE — should be metric, not dimension (§15 H6)** |
 | `user_group` | Event | `user_group` | Always `[V3]` for V3 traffic |
 | `app_page_location` | — | `app_page_location` | **NOT REGISTERED — app navigation invisible (§15 H5)** |
+| Cart Type | Event | `cart_type` | Multi-cart reporting ([MULTI_CART_TRACKING.md](./MULTI_CART_TRACKING.md)). **Register before the GTM publish.** |
 
 ### 12.3 Custom metrics
 
 | Metric name | Scope | Parameter | Notes |
 |---|---|---|---|
 | (none registered) | — | — | `original_value` should be here |
+| Property Count | Event (Standard) | `property_count` | Multi-cart reporting. **Register before the GTM publish.** |
+| Item Count | Event (Standard) | `item_count` | Multi-cart reporting. **Register before the GTM publish.** |
 
 ### 12.4 Key events (starred conversions)
 
@@ -1396,6 +1417,13 @@ A full audit was conducted in May 2026. The following issues were identified. Se
 | L5 | Analytics window globals untyped in `global.d.ts` | `types/global.d.ts` |
 | L6 | 36 legacy property-specific Google Ads actions need archiving | Google Ads |
 
+### Found during multi-cart tracking (2026-10) — deferred
+
+| ID | Issue | Location |
+|---|---|---|
+| M-MC1 | **Room + tour (and credit-paid multi-property) `purchase` is wrong on the legacy confirmation page.** `value` reads `summary.totals` (first property only) instead of `grandTotals`; the tours are dropped from `items[]`; the rooms are mapped as `item_category: "Tour"`, `item_id: "unknown"` (`buildSummaryEcommerceItems(…, "mixed")`); `conversion_type` is missing. v4 sends the right `value` but also omits mixed tours from `items[]`. Fixing it changes the values Ads/Meta/TikTok/Sojern receive and makes the Surf Camp tags fire for room + Surf Camp orders, so it needs marketing sign-off. | `pages/booking/thanks.tsx` (`lineItems`, `totalValue`), `app/v4/booking/thanks/_lib/analytics.ts` |
+| M-MC2 | **Top-level dataLayer keys leak across events.** `ga4 - event - ecommerce events` forwards `hostel_name` / `hostel_country` / `conversion_type` straight from DLVs on all 14 ecommerce events, and GTM keeps top-level keys until overwritten, so a `view_item` after a checkout reports the last checkout's values. The multi-cart params avoid this with event-scoped `cjs - … (checkout)` variables; the existing params are unchanged. | GTM |
+
 ---
 
 ## Appendix — File Map
@@ -1413,6 +1441,9 @@ A full audit was conducted in May 2026. The following issues were identified. Se
 | `frontend/pages/booking/index.tsx` | `begin_checkout` (canonical) |
 | `frontend/pages/booking/payment.tsx` | `purchase` (DUPLICATE — remove), `payment_error` |
 | `frontend/pages/booking/thanks.tsx` | `purchase` (canonical + dedup), Tapfiliate conversion |
+| `frontend/utils/bookingDataLayer.ts` | Top-level booking fields (`conversion_type`, `hostel_*`) and cart composition (`cart_type`, `property_count`, `item_count`) |
+| `frontend/app/v4/booking/_lib/useBeginCheckoutEvent.ts` | v4 `begin_checkout` (fires on arrival at checkout) |
+| `frontend/app/v4/booking/thanks/_lib/analytics.ts` | v4 `purchase` (rooms/mixed + tour-only), Tapfiliate conversion |
 | `frontend/pages/destination/[slug].tsx` | `view_item` (broken payload) |
 | `frontend/pages/room/[slug].tsx` | `view_item_list` |
 | `frontend/pages/tours-events/index.tsx` | `view_item_list` |

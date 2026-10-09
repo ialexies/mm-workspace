@@ -160,6 +160,14 @@ No other frontend changes are required: `conversion_type` (`room` / `tour` / `gi
 `conversion_type` intentionally stays `"tour"` for surf camp bookings — it's a flow-level field (which
 booking engine handled checkout), not a product-level one; `item_category` is what the new triggers read.
 
+**Multi-cart (2026-10):** `purchase` / `begin_checkout` now also carry a top-level `cart_type`
+(`single` / `multi_property` / `mixed` / `mixed_multi_property`), `property_count` and `item_count` for
+reporting (see [MULTI_CART_TRACKING.md](./MULTI_CART_TRACKING.md)). `conversion_type` is **unchanged**, so
+the triggers in this spec are unaffected. **Before building the Hostel and Tour types:** room + tour orders
+leave their tours out of `items[]` on the v4 confirmation (and on the legacy page also mislabel the rooms
+as `item_category: "Tour"`), see `GA4-GTM-IMPLEMENTATION.md` §15 M-MC1. As things stand,
+`Purchase Has Tour Item` would miss v4 room + tour orders. Fix M-MC1 first, or accept that gap knowingly.
+
 **Known consequence:** any existing GA4 report/audience filtering `item_category == "Tour"` no longer
 includes surf camp bookings going forward (historical rows are unaffected — this only changes new data).
 

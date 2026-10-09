@@ -1,0 +1,137 @@
+{
+  "exportFormatVersion": 2,
+  "exportTime": "2026-10-09 00:00:00",
+  "containerVersion": {
+    "accountId": "6071603403",
+    "containerId": "207039567",
+    "containerVersionId": "0",
+    "container": {
+      "accountId": "6071603403",
+      "containerId": "207039567",
+      "name": "madmonkeyhostels.com",
+      "publicId": "GTM-KC78NFHD"
+    },
+    "variable": [
+      {
+        "accountId": "6071603403",
+        "containerId": "207039567",
+        "variableId": "910",
+        "name": "dl - cart_type",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "cart_type"
+          }
+        ],
+        "formatValue": {}
+      },
+      {
+        "accountId": "6071603403",
+        "containerId": "207039567",
+        "variableId": "911",
+        "name": "dl - property_count",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "property_count"
+          }
+        ],
+        "formatValue": {}
+      },
+      {
+        "accountId": "6071603403",
+        "containerId": "207039567",
+        "variableId": "912",
+        "name": "dl - item_count",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "item_count"
+          }
+        ],
+        "formatValue": {}
+      },
+      {
+        "accountId": "6071603403",
+        "containerId": "207039567",
+        "variableId": "913",
+        "name": "cjs - cart_type (checkout)",
+        "type": "jsm",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "javascript",
+            "value": "function() {\n  // Only begin_checkout / purchase carry this key. GTM's data model keeps\n  // top-level keys until overwritten, so without this guard a later\n  // view_item / add_to_cart would report the previous checkout's value.\n  var e = {{Event}};\n  if (e !== 'begin_checkout' && e !== 'purchase') return undefined;\n  return {{dl - cart_type}};\n}\n"
+          }
+        ],
+        "formatValue": {}
+      },
+      {
+        "accountId": "6071603403",
+        "containerId": "207039567",
+        "variableId": "914",
+        "name": "cjs - property_count (checkout)",
+        "type": "jsm",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "javascript",
+            "value": "function() {\n  // Only begin_checkout / purchase carry this key. GTM's data model keeps\n  // top-level keys until overwritten, so without this guard a later\n  // view_item / add_to_cart would report the previous checkout's value.\n  var e = {{Event}};\n  if (e !== 'begin_checkout' && e !== 'purchase') return undefined;\n  return {{dl - property_count}};\n}\n"
+          }
+        ],
+        "formatValue": {}
+      },
+      {
+        "accountId": "6071603403",
+        "containerId": "207039567",
+        "variableId": "915",
+        "name": "cjs - item_count (checkout)",
+        "type": "jsm",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "javascript",
+            "value": "function() {\n  // Only begin_checkout / purchase carry this key. GTM's data model keeps\n  // top-level keys until overwritten, so without this guard a later\n  // view_item / add_to_cart would report the previous checkout's value.\n  var e = {{Event}};\n  if (e !== 'begin_checkout' && e !== 'purchase') return undefined;\n  return {{dl - item_count}};\n}\n"
+          }
+        ],
+        "formatValue": {}
+      }
+    ]
+  }
+}
