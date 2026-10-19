@@ -1,190 +1,197 @@
-# Multi-cart booking tracking (`cart_type`)
+# Multi-product purchase tracking (rooms, tours, transport, eSIM)
 
-**Audience:** marketing (how to read the data) and engineering / GTM admin (how it works).
-**Status:** code on branch `feat/gtm-multi-cart-tracking` (Frontend repo). GTM + GA4 setup pending. See [Rollout](#rollout).
+**Audience:** marketing / revenue (how to read the data) and engineering / GTM admin (how it works).
+**Status:** code on branch `feat/gtm-multi-cart-tracking` (Frontend repo, **v4 only**). GTM + GA4 setup pending; see
+[Rollout](#rollout).
 
 ---
 
 ## 1. What it answers
 
-Marketing wants to compare **multi-cart** bookings against **single-cart** bookings: how many there are, revenue,
-AOV, and checkout → purchase conversion rate.
+A booking can mix **rooms, tours, transportation and eSIMs**. The `purchase` event describes all of it, so the teams
+can report on:
 
-"Multi-cart" covers two things a guest can do in one checkout:
+- purchases and revenue **by product category**
+- how many **rooms, tours, transport services and eSIMs** were sold
+- **single-item vs multi-item** purchases
+- **room-only, tour-only and mixed** conversions
+- revenue **by hostel property and country**
+- **cross-selling**: tours / transport bought alongside accommodation
 
-- **Multi-property:** rooms at **2 or more hostels** (the "add a stop" flow)
-- **Mixed:** **rooms + tours** together
+## 2. What's on the event
 
-## 2. The fields
+### Top-level fields (siblings of `ecommerce`)
 
-Three new parameters on the existing **`begin_checkout`** and **`purchase`** events. There is no new event, so
-nothing is double-counted.
+| Field | Meaning |
+|---|---|
+| `item_count` | **Total quantity** of everything purchased: rooms + tours + transport + eSIMs. A tour for 2 people counts 2. |
+| `property_count` | **Unique hostel properties** in the booking, across rooms **and** tours / transport. An eSIM adds none. |
+| `cart_type` | `single` (`item_count` = 1) or `multiple` (`item_count` > 1). |
+| `conversion_type` | `room` (rooms only; an eSIM alongside doesn't change it) · `tour` (tours / transport only) · `mixed` (rooms + at least one tour / transport) · `esim` (the standalone eSIM checkout). The other sites keep their own values (`gift_voucher`, `all_in`). |
 
-| Parameter | Type | Meaning |
-|---|---|---|
-| `cart_type` | string | one of the four values below |
-| `property_count` | number | how many distinct hostels the **rooms** are at (`0` for a tour-only cart) |
-| `item_count` | number | room lines + tour lines in the cart |
+`property_count` and `item_count` are separate metrics. Two rooms and one tour at Mad Monkey Manila = **3 items,
+1 property**; the same items across two hostels = **3 items, 2 properties**.
 
-### `cart_type` values
+### `ecommerce.items[]`: every product, separately
 
-| `cart_type` | Meaning | Example |
-|---|---|---|
-| `single` | Rooms at **one** hostel (any number of rooms/beds), **or** tours only | 2 nights at Mad Monkey Dumaguete; or one tour; or two tours, no room |
-| `multi_property` | Rooms at **2+ hostels**, no tour | Dumaguete + Siquijor |
-| `mixed` | Rooms at **one** hostel **+ at least one tour** | Dumaguete + island-hopping tour |
-| `mixed_multi_property` | Rooms at **2+ hostels + at least one tour** | Dumaguete + Siquijor + a tour |
+| Product | `item_category` | `quantity` | `price` |
+|---|---|---|---|
+| Room / bed | `Accommodation` | beds / rooms on the line | per unit |
+| Tour | `Tour` (`Surf Camp` / `Ha Giang Loop` for those products) | tickets | per ticket |
+| Transport (transfers, shuttles, boats) | `Transport` | tickets | per ticket |
+| eSIM | `eSIM` | eSIMs | per eSIM |
+| Any other cart add-on | `Add-on` | quantity | per unit |
 
-Everything except `single` counts as multi-cart.
+Every v4 item also carries `item_category3` = hostel name and **`item_category5` = hostel country** (new), so revenue
+can be split by property and by country.
 
-How it's decided:
+### `ecommerce.value`
 
-```
-rooms at 2+ hostels?   has a tour?   cart_type
-        no                 no          single
-        no                 yes         mixed            (single if there are no rooms at all)
-        yes                no          multi_property
-        yes                yes         mixed_multi_property
-```
+The **whole amount charged** for the transaction (`receipt.grandTotal` on rooms / mixed orders, the tour payment
+rule on tour-only orders, Stripe's amount on eSIM). It's taken once from the order total and never summed from the
+items, so nothing is double-counted.
 
-Example `purchase` push (only the last three keys are new):
+### Example
+
+A customer books, all at Mad Monkey Manila: Standard 4-Bed Dorm ×1, Standard Female Dorm ×1, City Tour ×1.
 
 ```js
 {
   event: "purchase",
-  conversion_type: "room",          // unchanged
-  hostel_name: "Mad Monkey Dumaguete",
-  ecommerce: { /* unchanged */ },
-  cart_type: "multi_property",
-  property_count: 2,
-  item_count: 3
+  item_count: 3,
+  property_count: 1,
+  cart_type: "multiple",
+  conversion_type: "mixed",          // rooms + tour
+  ecommerce: {
+    value: /* total charged */,
+    items: [ /* Accommodation, Accommodation, Tour */ ]
+  }
 }
 ```
 
-### Why not reuse `conversion_type`?
+### One purchase per transaction
 
-`conversion_type` is a **flow-level** field (`room` / `tour` / `gift_voucher` / `all_in`). Live GTM triggers
-(`Purchase - All In`, `Purchase - Parent Voucher`) and possibly reports and audiences filter on it. Adding a
-value such as `mixed` would silently move orders out of those filters, so it is **deliberately unchanged**, and
-multi-cart lives in its own dimension. A regression unit test locks `conversion_type` in place.
+Unchanged: each order fires exactly one `purchase`, however many items it has. The existing dedupe guards
+(sessionStorage for rooms, localStorage for tours and eSIM) stop a reload or a reopened email from firing it again.
 
-## 3. Where it's computed (Frontend repo)
+## 3. Where it's built (Frontend repo, v4 only)
 
-**v4 frontend only** (`app/v4/`, the new site). The old (legacy) site, reachable through "switch back" until
-16 October, is deliberately **not** changed: its events carry no `cart_type`, so in GA4 they show as
-*(not set)*. Exclude *(not set)* when comparing cart types.
+| Event | File |
+|---|---|
+| `purchase`: rooms / multi-property / mixed | `app/v4/booking/thanks/_lib/analytics.ts` → `usePurchaseEvent` |
+| `purchase`: tour-only | same file → `useTourPurchaseEvent` |
+| `purchase`: standalone eSIM (`?type=esim`), **new** | same file → `useEsimPurchaseEvent`, called from `EsimThanksScreen.tsx` once the eSIM is provisioned |
+| `begin_checkout` | `app/v4/booking/_lib/useBeginCheckoutEvent.ts` (same `cart_type` / `property_count` / `item_count` rules from the live cart; no `conversion_type`) |
 
-| Event | File | When |
-|---|---|---|
-| `begin_checkout` | `app/v4/booking/_lib/useBeginCheckoutEvent.ts` | on arrival at checkout, from the cart |
-| `purchase` (rooms / multi-property / mixed) | `app/v4/booking/thanks/_lib/analytics.ts` → `usePurchaseEvent` | from `GET /cart/{id}/confirmation` |
-| `purchase` (tour-only) | `app/v4/booking/thanks/_lib/analytics.ts` → `useTourPurchaseEvent` | from the tour receipt |
+Shared pieces:
 
-Helpers in `utils/bookingDataLayer.ts`:
+- `app/v4/booking/thanks/_lib/purchaseItems.ts`: reads the confirmation and returns every product as a GA4 item,
+  plus the lines the fields are counted from. It reads each thing **once**: the backend copies the same tour into
+  up to three places, and the anchor's add-ons into `summary.summary.addons`.
+- `utils/bookingDataLayer.ts` → `getCartCompositionFields(lines)`: the rules in §2; `safeCartComposition`: fail-safe,
+  so any error is logged and the event still fires without the fields.
+- `utils/ecommerceDataLayer.ts`: item categories (`Transport`, `eSIM`, `Add-on`), `item_category5`, and
+  `buildAddonEcommerceItems`.
 
-- `getCartCompositionFields({ roomPropertyIds, tourCount })`: the pure rule above.
-- `cartCompositionInputFromCart(cart)`: room `property_id`s from `cart.cloudbeds.rooms`, and tours via
-  `getCartRezdyItems` (the same tour-line counter the booking page uses).
-- `cartCompositionInputFromConfirmation(summary)`: rooms per `bookings[]` entry (falling back to the flat
-  `summary.rooms`), and tours nested per booking, then top-level `tours[]`, then `tour`.
-- `safeCartComposition(build, onError)`: **fail-safe wrapper**. Any error is logged via `logError` and yields
-  `{}`, so the event still fires without the fields. Analytics must never block a checkout or lose a purchase.
+Rules worth knowing:
 
-Design rules:
-
-- **Additive only.** No existing key on either event changes. This was verified by diffing the full v4
-  `purchase` payload before and after the change for 6 cart scenarios (§7).
-- **Never relayed through sessionStorage.** Unlike `hostel_name` / `conversion_type`
-  (`BOOKING_TRACKING_FIELDS_STORAGE_KEY`), these are computed from the cart or confirmation in hand, so a
-  previous cart can't leak into the next booking.
+- **Transport** is recognised by product code via the v4 tour categories (`app/v4/_lib/tourCategory.ts`). That list
+  was generated from staging, so a production-only transfer code not in it is reported as `Tour` until the list is
+  regenerated.
+- **A tour's hostel** is its own `propertyId` from the confirmation (or slug). A tour with neither adds no property.
+  It's never guessed from the name, because a supplier can come back as a bare place like "Valencia".
+- **The legacy `pages/booking` site is not changed.** It retires after 16 October, and its events show these fields
+  as *(not set)*.
 
 ## 4. GTM (`GTM-KC78NFHD`)
 
-Import `gtm/import_multi_cart_params.json` (**Merge → Rename conflicting**). It adds:
+The variables and tag parameters from the first version stay as they are; only the values change:
 
 | Variable | Type | Purpose |
 |---|---|---|
 | `dl - cart_type`, `dl - property_count`, `dl - item_count` | Data Layer Variable (v2) | raw values |
-| `cjs - cart_type (checkout)`, `cjs - property_count (checkout)`, `cjs - item_count (checkout)` | Custom JavaScript | return the DLV **only** when `{{Event}}` is `begin_checkout` or `purchase`, else `undefined` |
+| `cjs - cart_type (checkout)`, `cjs - property_count (checkout)`, `cjs - item_count (checkout)` | Custom JavaScript | the DLV **only** on `begin_checkout` / `purchase`, else `undefined` |
 
-Then **by hand** (an import would overwrite the tag): in `ga4 - event - ecommerce events`, add three Event
-Parameters (`cart_type`, `property_count` and `item_count`), each bound to its `cjs - … (checkout)` variable.
+On `ga4 - event - ecommerce events`: Event Parameters `cart_type`, `property_count`, `item_count`, each set to its
+`cjs - … (checkout)` variable. `conversion_type` and items are already forwarded by that tag. Create the variables
+by hand or import `gtm/import_multi_cart_params.json` (**Merge → Rename conflicting**).
 
 Why the `cjs` wrappers: that tag fires on 14 ecommerce events, and GTM's data model keeps top-level keys until
-they're overwritten. Bound directly, a `view_item` after a checkout would report the previous `cart_type`.
-(`hostel_name` and `conversion_type` already have this leak; it's tracked in Known issues and not changed
-here.)
+they're overwritten, so a later `view_item` would otherwise report the last checkout's values.
 
-Nothing else is edited: no other tag, trigger or variable. The sites that share the container (mm-squad-trips,
-parents-voucher, madventure) never push these keys, so nothing changes for them.
+**Effects on existing tags** (all intended by the task):
+
+- `conversion_type` is now `mixed` for v4 room + tour / transport orders, so they no longer match filters on `room`.
+- Room + Surf Camp orders now include the Surf Camp item, so the live `Purchase - Surf Camp` tags fire for them,
+  with the order's value (as that spec designs).
+- Standalone eSIM orders now send a `purchase`: new conversions in GA4 / Google Ads / Meta / TikTok.
 
 ## 5. GA4
 
-Register under **Admin → Custom definitions**, **before** the GTM publish, on every GA4 property behind
-`{{lut - ga property 1}}` (web `G-K27E7XLRBP`; check whether app `G-WVGB07X1M6` and dev `G-27GXNDKYWW` are
-separate properties, and if so register there too):
+Register under **Admin → Data display → Custom definitions** (on the web property, and on the dev property to see
+it during GTM Preview):
 
 | Type | Name | Scope | Event parameter |
 |---|---|---|---|
 | Custom dimension | Cart Type | Event | `cart_type` |
+| Custom dimension | Conversion Type | Event | `conversion_type` |
 | Custom metric | Property Count | Event (Standard) | `property_count` |
 | Custom metric | Item Count | Event (Standard) | `item_count` |
 
-### Reports for marketing
+Item category, Item category 3 / 5, Item revenue and Items purchased are **built-in**, so there's nothing to register.
 
-- **Explore → Free form:** Rows = *Cart Type*. Values = *Transactions*, *Purchase revenue*, *Average purchase
-  revenue* (AOV). Filter *Event name* = `purchase`.
-- **Explore → Funnel exploration:** steps `begin_checkout` → `purchase`, *Breakdown* = *Cart Type*, to compare
-  conversion rate.
-- Single vs multi in one number: add a segment or filter *Cart Type* ≠ `single`.
+### Reports
 
-### Caveats (read before presenting numbers)
+| Requirement | Explore → Free form |
+|---|---|
+| Purchases & revenue by product category | Item category × Item revenue, Items purchased |
+| Rooms / tours / transport / eSIMs sold | Item category × Items purchased |
+| Single vs multi-item | Cart Type × Transactions, Purchase revenue |
+| Room-only / tour-only / mixed | Conversion Type × Transactions, Purchase revenue |
+| Revenue by hostel and country | Item category 3 (hostel), Item category 5 (country) × Item revenue |
+| Cross-selling | Filter Conversion Type = `mixed`, then Item category |
 
-1. **No history.** Data starts the day GTM is published. Custom dimensions take ~24–48h to show in reports.
-2. **Old-site traffic is *(not set)*.** Bookings through the legacy site (until 16 October) don't send these
-   fields. Filter *Cart Type* ≠ *(not set)* when comparing.
-3. **Order revenue is right; item revenue for mixed orders isn't.** On v4, `purchase.value` is the full amount
-   charged (`receipt.grandTotal`), so *Purchase revenue* and AOV per Cart Type are reliable. But the tours of a
-   room + tour order are missing from `items[]` (§6), so **item-level** reports (by item category / item name)
-   under-count tour revenue for `mixed*` orders.
-4. `item_count` counts cart lines, so on `mixed*` orders it can be higher than the number of `items[]` in the
-   event, because of the same §6 issue.
+### Caveats
 
-## 6. Known issue (deferred, separate task)
+1. **No history.** Data starts on the GTM publish date; custom definitions take 24–48h to appear.
+2. **Old site = *(not set)*** until it retires (16 October). Exclude *(not set)* when comparing.
+3. **`begin_checkout` reflects the cart on arrival at checkout; `purchase` reflects the final order.** A guest who
+   adds a tour during checkout starts `single` / room-only and finishes `multiple` / `mixed`, so use `purchase` for
+   counts, revenue and AOV.
+4. **Item revenue can differ slightly from Purchase revenue** when part of an order was paid with store credit, or
+   with pack-level tour discounts and rounding. Purchase revenue (`value`) is the authoritative order total.
+5. **Transport list** comes from staging product codes; unknown production codes show as `Tour` (see §3).
 
-Found while building this, **not changed by it**: on the v4 confirmation, a room + tour order's `purchase`
-lists only the rooms in `items[]`. The tours are left out (`usePurchaseEvent` builds items from
-`bookings[].rooms` only). `value` is correct. Fixing it changes what the item-based tags see (e.g. it would make
-the Surf Camp tags fire for room + Surf Camp orders), so it needs marketing sign-off first. See
-`GA4-GTM-IMPLEMENTATION.md` §15 M-MC1, which also covers the larger version of this bug on the legacy page.
+## 6. Deferred
+
+- **Raw email / phone in the `purchase` push** (the task's privacy line). They're pushed for Google Ads Enhanced
+  Conversions (`UPD - Enhanced Conversions`, whose Ads toggle is still off, so nothing uses them yet). **No GA4 tag
+  reads them.** Recommended follow-up: push SHA-256 hashes in a `user_data` object and point the UPD variable at
+  them. The new eSIM purchase sends no email or phone.
 
 ## 7. Testing
 
-All runs used the branch code on a local dev server against the staging backend. No payment was made.
+All runs used the branch code on a local dev server (clean URLs on, like production) against the staging backend.
+Test bookings: **Dumaguete, January 2027**. No payment was made.
 
-| Layer | What | Result (2026-10-09) |
-|---|---|---|
-| Unit (`bun test`) | `utils/bookingDataLayer.test.ts`: every `cart_type` branch, blank/duplicate/numeric ids, cart + confirmation input mapping, fail-safe wrapper, `conversion_type` regression; plus the existing v4 thanks / tour-purchase / ecommerce suites | 304/304 pass |
-| Playwright `multi-cart-analytics.spec.ts` + existing `v4-thanks.spec.ts`, `v4-thanks-tours.spec.ts` | mocked confirmation × 6 cart scenarios on v4 thanks; exactly one `purchase`; no re-fire on reload; no stale carry-over; confirmation without `bookings[]`; existing receipt / deposit / free-tour / dedupe checks | 50/50 pass (desktop Chrome + iPhone WebKit) |
-| Before/after `purchase` diff | the spec in dump mode (`MULTI_CART_DUMP_DIR`) before and after the change | 6/6 identical except the 3 new keys (`value`, `transaction_id`, `items`, `conversion_type` unchanged) |
-| Real carts on the staging backend (`staging-multi-cart-begin-checkout.spec.ts`, manual, `E2E_MULTI_CART_REAL=1`) | Dumaguete 15–17 Jan 2027 → `single 1 1`; + Siquijor → `multi_property 2 2`; + Surf Camp tour → `mixed 1 2`; stops before PAY | 3/3 pass |
-| `v4-checkout.spec.ts` (real cart, now also asserts `cart_type: "single"`) | full v4 checkout incl. PAY opening Stripe (test mode) | 12/12 run tests pass (6 skipped by the spec's own conditions) |
-
-Run the spec locally:
+| Layer | What |
+|---|---|
+| Unit (`bun test`) | `utils/bookingDataLayer.test.ts`: the rules (task example 3 / 1 / multiple / mixed; two hostels → 2; 2 rooms + tour for 2 + eSIM → 5 / 1 / multiple / mixed; room + eSIM → room; tours only → tour; standalone eSIM → esim; fail-safe). `purchaseItems.test.ts`: confirmation shapes (tours / add-ons never counted twice, transport, eSIM name / price, top-level fallback, room items identical to before). |
+| Playwright `e2e/tests/multi-cart-analytics.spec.ts` | Mocked v4 confirmation × 10 scenarios + standalone eSIM: items, categories, fields, `value` = order total, exactly one `purchase`, no re-fire on reload, no stale carry-over. Desktop Chrome + iPhone WebKit. |
+| Before/after diff | The same scenarios on the original `new-v3-staging` code vs the branch: `value`, `transaction_id` and every pre-existing item identical; only the new fields, `conversion_type` on room + tour / transport orders, the added tour / transport / eSIM items and `item_category5` differ. |
+| Regression | `v4-thanks`, `v4-thanks-tours`, `v4-checkout`, and the real-cart staging dry run (`staging-multi-cart-begin-checkout.spec.ts`, manual, `E2E_MULTI_CART_REAL=1`). |
 
 ```bash
-CI=1 E2E_BASE_URL=http://localhost:3000 npx playwright test \
-  --config e2e/playwright.config.ts multi-cart-analytics
+CI=1 NEXT_PUBLIC_V4_CLEAN_URLS=true E2E_BASE_URL=http://localhost:3000 \
+  npx playwright test --config e2e/playwright.config.ts multi-cart-analytics
 ```
 
 ## Rollout
 
 1. Register the GA4 custom definitions (§5).
-2. Merge and deploy the Frontend PR. On its own it's harmless: the keys sit unused in the dataLayer until GTM
-   forwards them.
-3. In a GTM workspace: import the variables, edit the tag (§4), check GTM Preview on production (params on
-   `begin_checkout` / `purchase` only, and none on a following `view_item`), then publish. Export the container
-   to `gtm/` and add a row to `gtm/CHANGELOG.md`.
-4. After ~48h, build the Explorations (§5) and share them with marketing together with the caveats.
+2. Merge and deploy the Frontend PR.
+3. GTM: confirm the variables and tag parameters exist (§4); in Preview, check `purchase` shows the fields and a
+   later `view_item` doesn't; publish; export the container to `gtm/` and add a `gtm/CHANGELOG.md` row.
+4. Tell marketing about the effects in §4 and the caveats in §5, then share the Explorations after ~48h.
 
-**Rollback:** revert the GTM container to the previous version. The code can stay.
+**Rollback:** revert the Frontend PR. The GTM changes are harmless without it.

@@ -566,18 +566,19 @@ gtmPushEvent("begin_checkout", {    // or deferGtmPushEvent
 });
 ```
 
-**Cart composition parameters (top-level, added 2026-10):** `begin_checkout` and `purchase` also carry
-`cart_type`, `property_count` and `item_count`, siblings of `ecommerce`, for comparing multi-cart against
-single-cart bookings. **v4 only** (`app/v4/booking/_lib/useBeginCheckoutEvent.ts` and
-`app/v4/booking/thanks/_lib/analytics.ts`), through the shared, fail-safe helpers in
-`utils/bookingDataLayer.ts`. The legacy `pages/booking/*` events deliberately don't send them (that site is
-retired after 16 October), so they appear as *(not set)*. Additive only: `conversion_type` is unchanged.
+**Multi-product parameters (top-level, 2026-10):** on **v4** (`app/v4/booking/_lib/useBeginCheckoutEvent.ts`,
+`app/v4/booking/thanks/_lib/analytics.ts` + `purchaseItems.ts`), `purchase` lists **every** product in `items[]`
+(rooms `Accommodation`, tours `Tour` / `Surf Camp` / `Ha Giang Loop`, `Transport`, `eSIM`, `Add-on`; each with
+`item_category5` = country) and carries these siblings of `ecommerce`. `begin_checkout` carries the first three
+from the cart. The standalone eSIM checkout now fires `purchase` too. The legacy `pages/booking/*` events don't
+send them (retired after 16 October), so they appear as *(not set)*.
 
 | Parameter | Values | GA4 registration |
 |---|---|---|
-| `cart_type` | `single` · `multi_property` · `mixed` · `mixed_multi_property` | Custom dimension (Event): **Cart Type** |
-| `property_count` | distinct hostels with rooms (0 = tour-only) | Custom metric (Event): **Property Count** |
-| `item_count` | room lines + tour lines | Custom metric (Event): **Item Count** |
+| `cart_type` | `single` (total quantity 1) · `multiple` | Custom dimension (Event): **Cart Type** |
+| `property_count` | unique hostels across rooms and tours / transport | Custom metric (Event): **Property Count** |
+| `item_count` | total quantity of everything purchased | Custom metric (Event): **Item Count** |
+| `conversion_type` (`purchase`) | `room` · `tour` · `mixed` (rooms + tour / transport) · `esim` | Custom dimension (Event): **Conversion Type** |
 
 Full definitions, GTM setup (scoped `cjs - … (checkout)` variables) and reporting: [MULTI_CART_TRACKING.md](./MULTI_CART_TRACKING.md).
 
@@ -694,9 +695,10 @@ gtmPushEvent("purchase", {
 | `reservation_id` | Internal booking ID | Custom dimension — registered |
 | `coupon` | Applied coupon code | Standard |
 | `currency` | Customer's actual charge currency (uppercase ISO 4217) — multi-currency, not fixed to USD | Standard |
-| `cart_type` | `single` / `multi_property` / `mixed` / `mixed_multi_property` (top-level; see [MULTI_CART_TRACKING.md](./MULTI_CART_TRACKING.md)) | Custom dimension — Cart Type |
-| `property_count` | Distinct hostels with rooms (top-level) | Custom metric — Property Count |
-| `item_count` | Room lines + tour lines (top-level) | Custom metric — Item Count |
+| `cart_type` | `single` / `multiple` (top-level; see [MULTI_CART_TRACKING.md](./MULTI_CART_TRACKING.md)) | Custom dimension — Cart Type |
+| `property_count` | Unique hostels across rooms and tours / transport (top-level) | Custom metric — Property Count |
+| `item_count` | Total quantity of everything purchased (top-level) | Custom metric — Item Count |
+| `conversion_type` | `room` / `tour` / `mixed` / `esim` on v4 (top-level) | Custom dimension — Conversion Type |
 
 ---
 
@@ -1267,6 +1269,7 @@ window.location.hostname === 'localhost'  →  G-27GXNDKYWW (development)
 | `user_group` | Event | `user_group` | Always `[V3]` for V3 traffic |
 | `app_page_location` | — | `app_page_location` | **NOT REGISTERED — app navigation invisible (§15 H5)** |
 | Cart Type | Event | `cart_type` | Multi-cart reporting ([MULTI_CART_TRACKING.md](./MULTI_CART_TRACKING.md)). **Register before the GTM publish.** |
+| Conversion Type | Event | `conversion_type` | Already sent by the ecommerce tag; register to report room / tour / mixed / esim. |
 
 ### 12.3 Custom metrics
 
@@ -1421,7 +1424,7 @@ A full audit was conducted in May 2026. The following issues were identified. Se
 
 | ID | Issue | Location |
 |---|---|---|
-| M-MC1 | **Room + tour (and credit-paid multi-property) `purchase` is wrong on the legacy confirmation page.** `value` reads `summary.totals` (first property only) instead of `grandTotals`; the tours are dropped from `items[]`; the rooms are mapped as `item_category: "Tour"`, `item_id: "unknown"` (`buildSummaryEcommerceItems(…, "mixed")`); `conversion_type` is missing. v4 sends the right `value` but also omits mixed tours from `items[]`. Fixing it changes the values Ads/Meta/TikTok/Sojern receive and makes the Surf Camp tags fire for room + Surf Camp orders, so it needs marketing sign-off. | `pages/booking/thanks.tsx` (`lineItems`, `totalValue`), `app/v4/booking/thanks/_lib/analytics.ts` |
+| M-MC1 | **✅ Fixed on v4 (2026-10, multi-product tracking): every product is now in `items[]` and `conversion_type` is `mixed`. Still open on the legacy page only (retiring 16 Oct):** room + tour (and credit-paid multi-property) `purchase` is wrong on the legacy confirmation page. `value` reads `summary.totals` (first property only) instead of `grandTotals`; the tours are dropped from `items[]`; the rooms are mapped as `item_category: "Tour"`, `item_id: "unknown"` (`buildSummaryEcommerceItems(…, "mixed")`); `conversion_type` is missing. v4 sends the right `value` but also omits mixed tours from `items[]`. Fixing it changes the values Ads/Meta/TikTok/Sojern receive and makes the Surf Camp tags fire for room + Surf Camp orders, so it needs marketing sign-off. | `pages/booking/thanks.tsx` (`lineItems`, `totalValue`), `app/v4/booking/thanks/_lib/analytics.ts` |
 | M-MC2 | **Top-level dataLayer keys leak across events.** `ga4 - event - ecommerce events` forwards `hostel_name` / `hostel_country` / `conversion_type` straight from DLVs on all 14 ecommerce events, and GTM keeps top-level keys until overwritten, so a `view_item` after a checkout reports the last checkout's values. The multi-cart params avoid this with event-scoped `cjs - … (checkout)` variables; the existing params are unchanged. | GTM |
 
 ---

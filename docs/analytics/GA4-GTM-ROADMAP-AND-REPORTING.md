@@ -150,7 +150,7 @@ Add entries to `frontend/.env.example` with comments pointing to the implementat
 | **DebugView** | Parameter validation during development |
 | **Explorations → Funnel** | `view_item` → `add_to_cart` → `begin_checkout` → `purchase` |
 | **Explorations → Free form** | Segment by `user_group`, `reservation_id`, device |
-| **Explorations → Free form / Funnel by Cart Type** | Single vs multi-cart: rows *Cart Type* × Transactions / Purchase revenue / Average purchase revenue; funnel `begin_checkout` → `purchase` broken down by *Cart Type*. Exclude *(not set)* (old-site traffic). Order revenue per Cart Type is reliable; item-level tour revenue on `mixed*` orders is not until §15 M-MC1 is fixed. See [MULTI_CART_TRACKING.md](./MULTI_CART_TRACKING.md) |
+| **Explorations → Free form / Funnel by Cart Type** | Single vs multi-cart: rows *Cart Type* × Transactions / Purchase revenue / Average purchase revenue; funnel `begin_checkout` → `purchase` broken down by *Cart Type*. Exclude *(not set)* (old-site traffic). Cart Type is `single` / `multiple`; use *Conversion Type* (room / tour / mixed / esim) and *Item category* (incl. Transport, eSIM) for the product mix and cross-selling. See [MULTI_CART_TRACKING.md](./MULTI_CART_TRACKING.md) |
 | **Admin → Events** | Key events, new event registration |
 | **Admin → Data display → Filters** | Exclude internal/test traffic if IP or debug params defined |
 
