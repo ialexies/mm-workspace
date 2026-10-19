@@ -1,8 +1,9 @@
 # Multi-product purchase tracking (rooms, tours, transport, eSIM)
 
 **Audience:** marketing / revenue (how to read the data) and engineering / GTM admin (how it works).
-**Status:** code on branch `feat/gtm-multi-cart-tracking` (Frontend repo, **v4 only**). GTM + GA4 setup pending; see
-[Rollout](#rollout).
+**Status (2026-10-19):** code pushed on branch `feat/gtm-multi-cart-tracking` (Frontend repo `mmk-master/next-web-app`,
+**v4 only**, commit `681167b0`, includes a merge of `new-v3-staging`). PR, deploy, GA4 definitions and GTM publish
+pending; see [Rollout](#rollout).
 
 ---
 
@@ -174,12 +175,14 @@ Item category, Item category 3 / 5, Item revenue and Items purchased are **built
 All runs used the branch code on a local dev server (clean URLs on, like production) against the staging backend.
 Test bookings: **Dumaguete, January 2027**. No payment was made.
 
-| Layer | What |
-|---|---|
-| Unit (`bun test`) | `utils/bookingDataLayer.test.ts`: the rules (task example 3 / 1 / multiple / mixed; two hostels → 2; 2 rooms + tour for 2 + eSIM → 5 / 1 / multiple / mixed; room + eSIM → room; tours only → tour; standalone eSIM → esim; fail-safe). `purchaseItems.test.ts`: confirmation shapes (tours / add-ons never counted twice, transport, eSIM name / price, top-level fallback, room items identical to before). |
-| Playwright `e2e/tests/multi-cart-analytics.spec.ts` | Mocked v4 confirmation × 10 scenarios + standalone eSIM: items, categories, fields, `value` = order total, exactly one `purchase`, no re-fire on reload, no stale carry-over. Desktop Chrome + iPhone WebKit. |
-| Before/after diff | The same scenarios on the original `new-v3-staging` code vs the branch: `value`, `transaction_id` and every pre-existing item identical; only the new fields, `conversion_type` on room + tour / transport orders, the added tour / transport / eSIM items and `item_category5` differ. |
-| Regression | `v4-thanks`, `v4-thanks-tours`, `v4-checkout`, and the real-cart staging dry run (`staging-multi-cart-begin-checkout.spec.ts`, manual, `E2E_MULTI_CART_REAL=1`). |
+| Layer | What | Result (2026-10-19) |
+|---|---|---|
+| Unit (`bun test`) | `utils/bookingDataLayer.test.ts`: the rules (task example 3 / 1 / multiple / mixed; two hostels → 2; 2 rooms + tour for 2 + eSIM → 5 / 1 / multiple / mixed; room + eSIM → room; tours only → tour; standalone eSIM → esim; fail-safe). `purchaseItems.test.ts`: confirmation shapes (tours / add-ons never counted twice, transport, eSIM name / price, top-level fallback, room items identical to before). | 403 pass across analytics + v4 booking tests. 5 unrelated tests elsewhere fail identically on `new-v3-staging` |
+| Playwright `e2e/tests/multi-cart-analytics.spec.ts` | Mocked v4 confirmation × 10 scenarios + standalone eSIM: items, categories, fields, `value` = order total, exactly one `purchase`, no re-fire on reload, no stale carry-over. | 60/60 with `v4-thanks` + `v4-thanks-tours`, desktop Chrome + iPhone WebKit |
+| Before/after diff | The same 10 scenarios on the original `new-v3-staging` code vs the branch. | `value`, `transaction_id` and every pre-existing item identical; only the new fields, `conversion_type` (room → mixed on room + tour / transport), the added Tour / Transport / eSIM items and `item_category5` differ |
+| Real carts, staging backend (`staging-multi-cart-begin-checkout.spec.ts`, manual, `E2E_MULTI_CART_REAL=1`) | Dumaguete 15–17 Jan 2027; stops before PAY. | 1 bed → `single` 1 / 1; Dumaguete + Siquijor → `multiple` 2 / 2; tour-first cart → `multiple`, counts = ticket quantity |
+| `v4-checkout.spec.ts` | Full v4 checkout up to Stripe test mode (no payment), incl. `cart_type` on a real cart. | 13 pass, 5 skipped by the spec's own conditions (2 needed a re-run: staging had no bookable room at Siem Reap) |
+| Updated existing test | `v4-thanks-tours`: a paid tour add-on (lunch) is now its own `Add-on` item. | intended by the task ("all purchased products … separately") |
 
 ```bash
 CI=1 NEXT_PUBLIC_V4_CLEAN_URLS=true E2E_BASE_URL=http://localhost:3000 \
